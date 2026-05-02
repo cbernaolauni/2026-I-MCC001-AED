@@ -53,6 +53,9 @@ public:
     Node*           getNext() const { return m_pNext; }
     Node*&          getNextRef()    { return m_pNext; }
     void            setNext(Node *pNext) { m_pNext = pNext; }
+    void operator++() { ++m_data; }
+    void operator+=(const value_type& value) { m_data += value; }
+    void operator*=(const value_type& value) { m_data *= value; }
 };
 
 template <typename T>
@@ -95,27 +98,97 @@ private:
 public:
     LinkedList() {}
     LinkedList(const LinkedList &other){ // Copy constructor
+        Node *pNode = other.m_pRoot;
+        while (pNode) {
+            push_back(pNode->getData(), pNode->getRef());
+            pNode = pNode->getNext();
+        }
     }
     LinkedList(LinkedList &&other){ // Move constructor
+        m_pRoot = other.m_pRoot;
+        m_pTail = other.m_pTail;
+        m_size  = other.m_size;
+
+        other.m_pRoot = nullptr;
+        other.m_pTail = nullptr;
+        other.m_size  = 0;
     }
     LinkedList& operator=(const LinkedList &other){ // Copy assignment operator
     }
     LinkedList& operator=(LinkedList &&other){ // Move assignment operator
     }
     
-    virtual        ~LinkedList() {}
-    virtual void    push_front(value_type value, Ref ref){}
+    virtual        ~LinkedList() {
+        Node *pNode = m_pRoot;
+        while (pNode) {
+            Node* pNext = pNode->getNext();
+            cout << "Eliminando node: " << *pNode << endl;
+            delete pNode;
+            pNode = pNext;
+        }
+        m_pRoot = nullptr;
+        m_pTail = nullptr;
+        m_size = 0;
+    }
+    virtual void    push_front(value_type value, Ref ref){
+        m_pRoot = new Node(value, ref, m_pRoot);
+        if (m_size == 0)
+            m_pTail = m_pRoot;
+        m_size++;
+    }
     virtual auto    pop_front() -> std::pair<value_type, Ref>{ 
         if( m_pRoot ){
             Node* pTemp = m_pRoot;
             m_pRoot = m_pRoot->getNext();
-            return std::make_pair(pTemp->getData(), pTemp->getRef());
+            if (!m_pRoot)
+                m_pTail = nullptr;
+            m_size--;
+            auto result = std::make_pair(pTemp->getData(), pTemp->getRef());
+            delete pTemp;
+            return result;
         }else
             throw std::out_of_range("pop_front(): empty list");
     }
-    virtual void    push_back(value_type value, Ref ref){}
+    virtual void    push_back(value_type value, Ref ref){
+        Node* pNew = new Node(value, ref);
+        if (m_pTail)
+            m_pTail->setNext(pNew);
+        m_pTail = pNew;
+        if (m_size == 0)
+            m_pRoot = m_pTail;
+        m_size++;
+    }
     virtual auto    pop_back() -> std::pair<value_type, Ref>{
-        return std::pair<value_type, Ref>();
+        if(!m_pRoot)
+            throw std::out_of_range("pop_back(): empty list");
+        
+        if (m_pRoot == m_pTail) {
+            return pop_front();
+        }
+
+        Node* pPrev = m_pRoot;
+        while (pPrev->getNext() != m_pTail) {
+            pPrev = pPrev->getNext();
+        }
+
+        auto result = std::make_pair(m_pTail->getData(), m_pTail->getRef());
+        delete m_pTail;
+
+        m_pTail = pPrev;
+        m_pTail->setNext(nullptr);
+        m_size--;
+        return result;
+    }
+
+    virtual Node& operator[](size_t index){
+        if (index >= m_size)
+            throw std::out_of_range("Indice fuera de rango");
+        
+        Node* pNode = m_pRoot;
+        for (size_t i = 0; i < index; i++) {
+            pNode = pNode->getNext();
+        }
+        return *pNode;
     }
 private:
             void    internal_insert(Node* &pParent, const value_type &value, Ref ref);
@@ -134,6 +207,11 @@ public:
     void ForEach(Func func, Args &&...  args){
         unique_lock<mutex> lock(m_mtx);
         ::ForEach(begin(), end(), func, std::forward<Args>(args)... );
+    }
+
+    template <typename Func, typename... Args>
+    forward_iterator FirstThat(Func func, Args &&... args){
+        return ::FirstThat(begin(), end(), func, forward<Args>(args)...);
     }
 };
 
@@ -156,6 +234,7 @@ void LinkedList<Traits>::insert(const value_type &value, Ref ref){
 
 template <typename Traits>
 string  LinkedList<Traits>::toString() {
+    scoped_lock lock(m_mtx);
     stringstream ss;
     Node *pNode = m_pRoot;
     ss << "[";
@@ -175,5 +254,13 @@ ostream& operator<<(ostream& os, LinkedList<Traits>& list){
     return os << list.toString();
 }
 
+template <typename Traits>
+istream& operator>>(istream& is, LinkedList<Traits>& list){
+    typename Traits::value_type value;
+    Ref ref;
+    is >> value >> ref;
+    list.insert(value, ref);
+    return is;
+}
 
 #endif // __LINKEDLIST_H__
