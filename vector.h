@@ -61,6 +61,7 @@ class Vector{
         ~Vector();
         void push_back(T value, Ref ref);
         T get(size_t index);
+        size_t getNode(Node m_data);
         size_t size();
         string ToString();
 
@@ -122,6 +123,14 @@ string Vector<T>::ToString() {
         oss << m_data[m_size-1];
     oss << "]";
     return oss.str();
+}
+
+template <typename T>
+size_t Vector<T>::getNode(Node node) {
+    for (size_t i = 0; i < m_size; i++)
+        if (m_data[i].GetData() == node.GetData())
+            return i;
+    throw out_of_range("Data not found");
 }
 
 template <typename T>
