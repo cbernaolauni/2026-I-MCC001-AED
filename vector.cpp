@@ -13,8 +13,11 @@ void DemoVector(){
 
     cout << "Recorrido con iteradores" << endl;
     cout << "[";
-    for (auto it = v1.begin(); it != v1.end(); ++it)
-        cout << *it << ",";
+    for (auto it = v1.begin(); it != v1.end(); ++it) {
+        cout << *it;
+        if (v1.getNode(*it) == v1.size())
+            cout << ",";
+    }
     cout << "]" << endl;
     cout << "Fin recorrido con iteradores" << endl;
 
