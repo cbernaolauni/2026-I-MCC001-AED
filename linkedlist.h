@@ -258,7 +258,8 @@ template <typename Traits>
 istream& operator>>(istream& is, LinkedList<Traits>& list){
     typename Traits::value_type value;
     Ref ref;
-    is >> value >> ref;
+    char ignore;
+    is >> ignore >> value >> ignore >> ref >> ignore;
     list.insert(value, ref);
     return is;
 }
