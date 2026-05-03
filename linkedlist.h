@@ -94,10 +94,11 @@ private:
     Node *m_pTail = nullptr;
     size_t m_size = 0;
     Comp   m_comp;
-    mutex m_mtx;
+    mutable mutex m_mtx;
 public:
     LinkedList() {}
     LinkedList(const LinkedList &other){ // Copy constructor
+        scoped_lock<mutex> lock(other.m_mtx);
         Node *pNode = other.m_pRoot;
         while (pNode) {
             push_back(pNode->getData(), pNode->getRef());
@@ -105,13 +106,10 @@ public:
         }
     }
     LinkedList(LinkedList &&other){ // Move constructor
-        m_pRoot = other.m_pRoot;
-        m_pTail = other.m_pTail;
-        m_size  = other.m_size;
-
-        other.m_pRoot = nullptr;
-        other.m_pTail = nullptr;
-        other.m_size  = 0;
+        scoped_lock<mutex> lock(other.m_mtx);
+        m_pRoot = std::exchange(other.m_pRoot, nullptr);
+        m_pTail = std::exchange(other.m_pTail, nullptr);
+        m_size  = std::exchange(other.m_size, 0);
     }
     LinkedList& operator=(const LinkedList &other){ // Copy assignment operator
     }
@@ -119,10 +117,10 @@ public:
     }
     
     virtual        ~LinkedList() {
+        scoped_lock<mutex> lock(m_mtx);
         Node *pNode = m_pRoot;
         while (pNode) {
             Node* pNext = pNode->getNext();
-            cout << "Eliminando node: " << *pNode << endl;
             delete pNode;
             pNode = pNext;
         }
@@ -131,12 +129,14 @@ public:
         m_size = 0;
     }
     virtual void    push_front(value_type value, Ref ref){
+        scoped_lock<mutex> lock(m_mtx); 
         m_pRoot = new Node(value, ref, m_pRoot);
         if (m_size == 0)
             m_pTail = m_pRoot;
         m_size++;
     }
     virtual auto    pop_front() -> std::pair<value_type, Ref>{ 
+        scoped_lock<mutex> lock(m_mtx); 
         if( m_pRoot ){
             Node* pTemp = m_pRoot;
             m_pRoot = m_pRoot->getNext();
@@ -150,6 +150,7 @@ public:
             throw std::out_of_range("pop_front(): empty list");
     }
     virtual void    push_back(value_type value, Ref ref){
+        scoped_lock<mutex> lock(m_mtx);
         Node* pNew = new Node(value, ref);
         if (m_pTail)
             m_pTail->setNext(pNew);
@@ -159,6 +160,7 @@ public:
         m_size++;
     }
     virtual auto    pop_back() -> std::pair<value_type, Ref>{
+        scoped_lock<mutex> lock(m_mtx); 
         if(!m_pRoot)
             throw std::out_of_range("pop_back(): empty list");
         
@@ -181,6 +183,7 @@ public:
     }
 
     virtual Node& operator[](size_t index){
+        scoped_lock<mutex> lock(m_mtx); 
         if (index >= m_size)
             throw std::out_of_range("Indice fuera de rango");
         
@@ -211,7 +214,8 @@ public:
 
     template <typename Func, typename... Args>
     forward_iterator FirstThat(Func func, Args &&... args){
-        return ::FirstThat(begin(), end(), func, forward<Args>(args)...);
+        scoped_lock<mutex> lock(m_mtx); 
+        return ::FirstThat(begin(), end(), func, std::forward<Args>(args)...);
     }
 };
 
@@ -229,6 +233,7 @@ void LinkedList<Traits>::internal_insert(Node* &pPrev, const value_type &value, 
 
 template <typename Traits>
 void LinkedList<Traits>::insert(const value_type &value, Ref ref){
+    scoped_lock<mutex> lock(m_mtx); 
     internal_insert(m_pRoot, value, ref);
 }
 
@@ -258,8 +263,20 @@ template <typename Traits>
 istream& operator>>(istream& is, LinkedList<Traits>& list){
     typename Traits::value_type value;
     Ref ref;
-    char ignore;
-    is >> ignore >> value >> ignore >> ref >> ignore;
+    char op, comma, cp;
+
+    if (!(is >> op >> value >> comma >> ref >> cp)) {
+        cerr << "Error: formato invalido" << endl;
+        return is;
+    }
+
+    if (op != '(' || comma != ',' || cp != ')') {
+        is.setstate(ios::failbit);
+        cerr << "Error: se esperaba (valor, ref), se obtuvo: " 
+             << op << value << comma << ref << cp << endl;
+        return is;
+    }
+
     list.insert(value, ref);
     return is;
 }
