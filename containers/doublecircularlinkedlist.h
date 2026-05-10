@@ -250,12 +250,3 @@ public:
     }
 };
 
-template <typename Traits>
-ostream& operator<<(ostream& os, CircularDoubleLinkedList<Traits>& list){
-    return os << list.toString();
-}
-
-template <typename Traits>
-istream& operator>>(istream& is, CircularDoubleLinkedList<Traits>& list){
-    return operator>>(is, static_cast<LinkedList<Traits>&>(list));
-}

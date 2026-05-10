@@ -83,8 +83,8 @@ public:
 
     /*
     Destructor heredado de linked list
-    ~DoubleLinkedList() { }
     */
+    virtual ~DoubleLinkedList() { }
     
     size_t size () const { return this->m_size; }
     bool isEmpty() const { return this->m_pRoot == nullptr; }
@@ -164,15 +164,5 @@ public:
         return ::FirstThat(rbegin(), rend(), func, forward<Args>(args)...);
     }
 };
-
-template <typename Traits>
-ostream& operator<<(ostream& os, DoubleLinkedList<Traits>& list){ 
-    return operator<<(os, static_cast<LinkedList<Traits>&>(list));
-}
-
-template <typename Traits>
-istream& operator>>(istream& is, DoubleLinkedList<Traits>& list){
-    return operator>>(is, static_cast<LinkedList<Traits>&>(list));
-}
 
 #endif // __DOUBLELINKEDLIST_H__
