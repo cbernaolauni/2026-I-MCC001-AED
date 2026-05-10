@@ -7,7 +7,6 @@
 #include <sstream>
 #include <mutex>     // mutex
 #include "general_iterator.h"
-#include "util.h"
 #include "../types.h"
 #include "../foreach.h"
 #include "basetrait.h"
@@ -51,9 +50,12 @@ public:
     Ref             getRef() const  { return m_ref; }
     Ref&            getRefRef()     { return m_ref; }
     void            setRef(Ref ref) { m_ref = ref; }
-    Node*           getNext() const { return m_pNext; }
-    Node*&          getNextRef()    { return m_pNext; }
+    virtual Node*           getNext() const { return m_pNext; }
+    virtual Node*&          getNextRef()    { return m_pNext; }
     void            setNext(Node *pNext) { m_pNext = pNext; }
+    void operator++() { ++m_data; }
+    void operator+=(const value_type& value) { m_data += value; }
+    void operator*=(const value_type& value) { m_data *= value; }
 };
 
 template <typename T>
@@ -87,31 +89,27 @@ public:
     using forward_iterator = LinkedListForwardIterator<MySelf>;
     // friend forward_iterator;
 
-private:
+protected:
     Node *m_pRoot = nullptr;
     Node *m_pTail = nullptr;
     size_t m_size = 0;
     Comp   m_comp;
-    mutex m_mtx;
+    mutable mutex m_mtx;
 public:
     LinkedList() {}
     LinkedList(const LinkedList &other){ // Copy constructor
-
-        Node* pTemp = other.m_pRoot;
-
-        while(pTemp != nullptr){
-            push_back(pTemp -> getData(), pTemp -> getRef());
-            pTemp = pTemp->getNext();
+        scoped_lock<mutex> lock(other.m_mtx);
+        Node *pNode = other.m_pRoot;
+        while (pNode) {
+            push_back(pNode->getData(), pNode->getRef());
+            pNode = pNode->getNext();
         }
-            
     }
     LinkedList(LinkedList &&other){ // Move constructor
-        
-        scoped_lock<mutex> lock(m_mtx);
-        m_pRoot = exchange(other.m_pRoot, nullptr);
-        m_pTail = exchange(other.m_pTail, nullptr);
-        m_size = exchange(other.m_size, 0);
-
+        scoped_lock<mutex> lock(other.m_mtx);
+        m_pRoot = std::exchange(other.m_pRoot, nullptr);
+        m_pTail = std::exchange(other.m_pTail, nullptr);
+        m_size = std::exchange(other.m_size, 0);
     }
     LinkedList& operator=(const LinkedList &other){ // Copy assignment operator
     }
@@ -119,102 +117,91 @@ public:
     }
     
     virtual        ~LinkedList() {
-        
         scoped_lock<mutex> lock(m_mtx);
-        Node* pTemp = m_pRoot;
-
-        while (pTemp){
-            Node* pNext = pTemp->getNext();
-            delete pTemp;
-            pTemp = pNext;
+        Node *pNode = m_pRoot;
+        while (pNode) {
+            Node* pNext = pNode->getNext();
+            delete pNode;
+            pNode = pNext;
         }
-
         m_pRoot = nullptr;
         m_pTail = nullptr;
         m_size  = 0;
     }
 
     virtual void   push_front(value_type value, Ref ref) {
-        Node* pTemp = new Node(value, ref, m_pRoot);  //Se crea el Nodo temporal con los datos ingresados que apunta a m_pRoot
-        
-        scoped_lock<mutex> lock(m_mtx);
-        m_pRoot = pTemp;                              //Se actualiza el nodo raiz
+        scoped_lock<mutex> lock(m_mtx); 
+        m_pRoot = new Node(value, ref, m_pRoot);
         if (m_size == 0)
-            m_pTail = pTemp;                          //Si la lista esta vacia la cola tambien se debe actualizar
-        ++m_size;
+            m_pTail = m_pRoot;
+        m_size++;
     }
     virtual auto    pop_front() -> pair<value_type, Ref>{ 
-        
-        scoped_lock<mutex> lock(m_mtx);
+        scoped_lock<mutex> lock(m_mtx); 
         if( m_pRoot ){
             Node* pTemp = m_pRoot;
             m_pRoot = m_pRoot->getNext();
-            --m_size;
-            return make_pair(pTemp->getData(), pTemp->getRef());
+            if (!m_pRoot)
+                m_pTail = nullptr;
+            m_size--;
+            auto result = std::make_pair(pTemp->getData(), pTemp->getRef());
+            delete pTemp;
+            return result;
         }else
-            throw out_of_range("pop_front(): empty list");
+            throw std::out_of_range("pop_front(): empty list");
     }
     virtual void    push_back(value_type value, Ref ref){
-        Node* pTemp = new Node(value, ref, nullptr);  //Como es el ultimo nodo no apunta a nada
-        
         scoped_lock<mutex> lock(m_mtx);
-        if (m_size == 0){
-            m_pRoot = pTemp;
-            m_pTail = pTemp; 
-        } else {
-            m_pTail->setNext(pTemp);
-            m_pTail = pTemp;
-        }                  
-        ++m_size;
+        Node* pNew = new Node(value, ref);
+        if (m_pTail)
+            m_pTail->setNext(pNew);
+        m_pTail = pNew;
+        if (m_size == 0)
+            m_pRoot = m_pTail;
+        m_size++;
     }
     virtual auto    pop_back() -> pair<value_type, Ref>{
+        scoped_lock<mutex> lock(m_mtx); 
+        if(!m_pRoot)
+            throw std::out_of_range("pop_back(): empty list");
         
-        scoped_lock<mutex> lock(m_mtx);
-        if( !m_pRoot )
-            throw out_of_range("pop_back(): empty list");
-        
-        //Con un solo elemento
-        if( m_pRoot == m_pTail){
-            auto pDelete = make_pair(m_pTail->getData(), m_pTail->getRef());
-
-            delete m_pTail;
+        if (m_pRoot == m_pTail) {
+            auto result = std::make_pair(m_pRoot->getData(), m_pRoot->getRef());
+            delete m_pRoot;
             m_pRoot = nullptr;
             m_pTail = nullptr;
-            
-            --m_size;
-            return pDelete;
+            m_size--;
+            return result;
         }
 
-        //Lista con varios elementos
-        Node *pTemp = m_pRoot;
+        Node* pPrev = m_pRoot;
+        while (pPrev->getNext() != m_pTail) {
+            pPrev = pPrev->getNext();
+        }
 
-        while (pTemp->getNext() != m_pTail)             //Recorrer toda la lista hasta el penultimo elemento
-            pTemp = pTemp->getNext();
+        auto result = std::make_pair(m_pTail->getData(), m_pTail->getRef());
+        delete m_pTail;
 
-        auto pDelete = make_pair(m_pTail->getData(), m_pTail->getRef());
-        
-        delete pTemp->getNext();
-        pTemp->setNext(nullptr);
-
-        m_pTail = pTemp;
-        --m_size;
-        return pDelete;
+        m_pTail = pPrev;
+        m_pTail->setNext(nullptr);
+        m_size--;
+        return result;
     }
-private:
+protected:
             void    internal_insert(Node* &pParent, const value_type &value, Ref ref);
 public:
     virtual void    insert(const value_type &value, Ref ref);
     
     virtual Node& operator[](const size_t index) const{
-        
+        scoped_lock<mutex> lock(m_mtx); 
         if (index >= m_size)
-        throw out_of_range("Index out of range");
-
-        Node* pTemp = m_pRoot;
-        for (size_t i = 0; i < index; ++i){
-            pTemp = pTemp -> getNext();
+            throw std::out_of_range("Indice fuera de rango");
+        
+        Node* pNode = m_pRoot;
+        for (size_t i = 0; i < index; i++) {
+            pNode = pNode->getNext();
         }
-        return *pTemp;
+        return *pNode;
     };
 
     virtual size_t  size() const { return m_size; }
@@ -233,6 +220,7 @@ public:
     //Agregar FirstThat
     template <typename Func, typename... Args>
     forward_iterator FirstThat(Func func, Args &&...  args){
+        scoped_lock<mutex> lock(m_mtx); 
         return ::FirstThat(begin(), end(), func, std::forward<Args>(args)... );
     }
 };
@@ -242,20 +230,25 @@ void LinkedList<Traits>::internal_insert(Node* &pPrev, const value_type &value, 
     if(!pPrev || m_comp(value, pPrev->getDataRef())){
         pPrev = new Node(value, ref, pPrev);
         m_size++;
-        if(pPrev == m_pRoot)
+        if(!pPrev->getNext())
             m_pTail = pPrev;
         return;
     }
-    internal_insert(pPrev->getNextRef(), value, ref);
+    Node* pNext = static_cast<Node*>(pPrev->getNextRef());
+    internal_insert(pNext, value, ref);
+    pPrev->setNext(pNext);
+    //internal_insert(pPrev->getNextRef(), value, ref);
 }
 
 template <typename Traits>
 void LinkedList<Traits>::insert(const value_type &value, Ref ref){
+    scoped_lock<mutex> lock(m_mtx);
     internal_insert(m_pRoot, value, ref);
 }
 
 template <typename Traits>
 string  LinkedList<Traits>::toString() {
+    scoped_lock lock(m_mtx);
     stringstream ss;
     Node *pNode = m_pRoot;
     ss << "[";

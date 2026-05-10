@@ -31,6 +31,9 @@ int main() {
     // DemoMacros();
     //DemoVector();
     // DemoConcurrentVector();
-    ListsDemo();
+    // ListsDemo();
+    DoubleListDemo();
+    CircularListDemo();
+    CircularDoubleListDemo();
     return 0;
 }

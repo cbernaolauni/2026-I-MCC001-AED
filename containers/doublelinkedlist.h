@@ -1,3 +1,6 @@
+#ifndef __DOUBLELINKEDLIST_H__
+#define __DOUBLELINKEDLIST_H__
+
 #include "linkedlist.h"
 
 template <typename T>
@@ -9,7 +12,11 @@ private:
     Node *m_pPrev;
 public:
     DLLNode(T data, Ref ref, Node *pNext = nullptr, Node *pPrev = nullptr)
-        : LLNode(data, ref, pNext), m_pPrev(pPrev){}
+        : LLNode<T>(data, ref, pNext), m_pPrev(pPrev){}
+
+    Node*  getNext() const override { 
+        return static_cast<Node*>(this->m_pNext); 
+    }
 
     Node*  getPrev() const { return m_pPrev; }
     Node*& getPrevRef() { return m_pPrev; }
@@ -48,7 +55,7 @@ public:
 };
 
 template <typename Traits>
-class DoubleLinkedList public LinkedList<Traits>{
+class DoubleLinkedList : public LinkedList<Traits>{
 public:
     using value_type = typename Traits::value_type;
     using Node       = typename Traits::Node;
@@ -57,72 +64,115 @@ public:
 
     using forward_iterator  = LinkedListForwardIterator<MySelf>;
     using backward_iterator = DoubleLinkedListBackwardIterator<MySelf>;
-
-private:
-    Node *m_pHead;
-    Node *m_pTail;
-    size_t m_size;
-    mutex  m_mtx;
-
 public:
-    DoubleLinkedList() : m_pHead(nullptr), m_pTail(nullptr), m_size(0) {}
-    DoubleLinkedList(DoubleLinkedList &other){}
-    DoubleLinkedList(DoubleLinkedList &&other){
-        scoped_lock<mutex> lock(m_mtx);
-        m_pHead = exchange(other.m_pHead, nullptr);
-        m_pTail = exchange(other.m_pTail, nullptr);
-        m_size = exchange(other.m_size, 0);
-    }
-    ~DoubleLinkedList() {
-        scoped_lock<mutex> lock(m_mtx);
-        while (m_pHead != nullptr) {
-            Node *pTemp = m_pHead;
-            m_pHead = m_pHead->getNextRef();
-            delete pTemp;
+    DoubleLinkedList() : LinkedList<Traits>() {}
+    DoubleLinkedList(const DoubleLinkedList &other) : LinkedList<Traits>() {
+        scoped_lock<mutex> lock(other.m_mtx);
+        Node *pNode = static_cast<Node*>(other.m_pRoot);
+        while (pNode) {
+            push_back(pNode->getData(), pNode->getRef());
+            pNode = static_cast<Node*>(pNode->getNext());
         }
-        m_pHead = nullptr;
-        m_pTail = nullptr;
-        m_size = 0;
     }
-    
-    size_t size () const { return m_size; }
-    bool isEmpty() const { return m_pHead == nullptr; }
-    
-    voidd insert(value_type value, Ref ref){
-        // TODO: insertar la el nodo hacia adelante (como en la LinkedList)
-        // adicionalmente conectar el nodo anterior con su nuevo siguiente
-        // usar internal insert pero debe devolver el nuevo nodo creado y 
-        // el puntero al lnodo anterior
+    DoubleLinkedList(DoubleLinkedList &&other){
+        scoped_lock<mutex> lock(other.m_mtx);
+        this->m_pRoot = exchange(other.m_pRoot, nullptr);
+        this->m_pTail = exchange(other.m_pTail, nullptr);
+        this->m_size = exchange(other.m_size, 0);
     }
-    void push_back(value_type value, Ref ref);
-    value_type pop_back();
 
-    forward_iterator begin()   { return forward_iterator(this, m_pHead); }
+    /*
+    Destructor heredado de linked list
+    ~DoubleLinkedList() { }
+    */
+    
+    size_t size () const { return this->m_size; }
+    bool isEmpty() const { return this->m_pRoot == nullptr; }
+    
+    void insert(const value_type &value, Ref ref) override {
+        scoped_lock<mutex> lock(this->m_mtx);
+        this->internal_insert(this->m_pRoot, value, ref);
+
+        Node *pNode = static_cast<Node*>(this->m_pRoot);
+        Node *pPrev = nullptr;
+        while (pNode) {
+            pNode->setPrev(pPrev);
+            pPrev = pNode;
+            pNode = static_cast<Node*>(pNode->getNext());
+        }
+    }
+    void push_back(value_type value, Ref ref) override {
+        scoped_lock<mutex> lock(this->m_mtx);
+        Node* pNew = new Node(value, ref, nullptr, static_cast<Node*>(this->m_pTail));
+        if (this->m_pTail)
+            this->m_pTail->setNext(pNew);
+        this->m_pTail = pNew;
+        if (this->m_size == 0)
+            this->m_pRoot = this->m_pTail;
+        this->m_size++;
+    }
+    pair<value_type, Ref> pop_back() override {
+        scoped_lock<mutex> lock(this->m_mtx); 
+        if(!this->m_pRoot)
+            throw std::out_of_range("pop_back(): empty list");
+        
+        if (this->m_pRoot == this->m_pTail) {
+            auto result = std::make_pair(this->m_pRoot->getData(), this->m_pRoot->getRef());
+            delete this->m_pRoot;
+            this->m_pRoot = nullptr;
+            this->m_pTail = nullptr;
+            this->m_size--;
+            return result;
+        }
+
+        Node* pPrev = static_cast<Node*>(this->m_pTail)->getPrev();
+        auto result = std::make_pair(this->m_pTail->getData(), this->m_pTail->getRef());
+        delete this->m_pTail;
+
+        this->m_pTail = pPrev;
+        this->m_pTail->setNext(nullptr);
+        this->m_size--;
+        return result;
+    }
+
+    forward_iterator begin()   { return forward_iterator(this, static_cast<Node*>(this->m_pRoot)); }
     forward_iterator end()     { return forward_iterator(this, nullptr); }
-    backward_iterator rbegin() { return backward_iterator(this, m_pTail); }
+    backward_iterator rbegin() { return backward_iterator(this, static_cast<Node*>(this->m_pTail)); }
     backward_iterator rend()   { return backward_iterator(this, nullptr); }
 
     template <typename Func, typename... Args>
     void ForEach(Func func, Args &&... args){
-        scoped_lock<mutex> lock(m_mtx);
+        scoped_lock<mutex> lock(this->m_mtx);
         ::ForEach(begin(), end(), func, forward<Args>(args)...);
     }
 
     template <typename Func, typename... Args>
     void ReverseForEach(Func func, Args &&... args){
-        scoped_lock<mutex> lock(m_mtx);
+        scoped_lock<mutex> lock(this->m_mtx);
         ::ForEach(rbegin(), rend(), func, forward<Args>(args)...);
     }
 
     template <typename Func, typename... Args>
     forward_iterator FirstThat(Func func, Args &&... args){
-        scoped_lock<mutex> lock(m_mtx);
+        scoped_lock<mutex> lock(this->m_mtx);
         return ::FirstThat(begin(), end(), func, forward<Args>(args)...);
     }
 
     template <typename Func, typename... Args>
     backward_iterator ReverseFirstThat(Func func, Args &&... args){
-        scoped_lock<mutex> lock(m_mtx);
+        scoped_lock<mutex> lock(this->m_mtx);
         return ::FirstThat(rbegin(), rend(), func, forward<Args>(args)...);
     }
 };
+
+template <typename Traits>
+ostream& operator<<(ostream& os, DoubleLinkedList<Traits>& list){ 
+    return operator<<(os, static_cast<LinkedList<Traits>&>(list));
+}
+
+template <typename Traits>
+istream& operator>>(istream& is, DoubleLinkedList<Traits>& list){
+    return operator>>(is, static_cast<LinkedList<Traits>&>(list));
+}
+
+#endif // __DOUBLELINKEDLIST_H__
