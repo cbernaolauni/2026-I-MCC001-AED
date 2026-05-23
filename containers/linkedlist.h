@@ -7,7 +7,6 @@
 #include <sstream>
 #include <mutex>     // mutex
 #include "general_iterator.h"
-#include "util.h"
 #include "../types.h"
 #include "../foreach.h"
 #include "basetrait.h"

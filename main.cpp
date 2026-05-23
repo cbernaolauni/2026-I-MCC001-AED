@@ -11,7 +11,7 @@ using namespace std;
 size_t size1() { return 0; }
 unsigned char size2() { return 0; }
 int main() {
-    cout << "HelloX World MCS-AED 2026-I" << endl;
+    /*cout << "HelloX World MCS-AED 2026-I" << endl;
     unsigned long i1 = size1()-1;
              long i2 = size1()-1;
     cout << "-1 en un size_t     : " << i1 << endl;
@@ -26,11 +26,13 @@ int main() {
     unsigned char i5 = i; // 136
              char i6 = i; // -120
     cout << "i5: " << (int)i5 << endl;
-    cout << "i6: " << (int)i6 << endl;
+    cout << "i6: " << (int)i6 << endl;*/
 
     // DemoMacros();
     //DemoVector();
     // DemoConcurrentVector();
-    ListsDemo();
+    // ListsDemo();
+    HeapDemo();
+    
     return 0;
 }

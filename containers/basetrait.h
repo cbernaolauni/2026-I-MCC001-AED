@@ -6,8 +6,8 @@ using namespace std;
 
 template <typename _T, typename _Node>
 struct BaseContainerTrait{
-    using value_type = typename _T;
-    using Node       = typename _Node;
+    using value_type = _T;
+    using Node       = _Node;
 };
 
 template <typename _T>
