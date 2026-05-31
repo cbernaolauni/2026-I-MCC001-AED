@@ -31,6 +31,7 @@ int main() {
     // DemoMacros();
     //DemoVector();
     // DemoConcurrentVector();
-    ListsDemo();
+    // ListsDemo();
+    DemoBinaryTree();
     return 0;
 }
