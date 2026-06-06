@@ -124,10 +124,12 @@ public:
     BinaryTree() {}
     BinaryTree(const BinaryTree &other){ // Copy constructor
         std::shared_lock lock(other.m_mutex);
+        m_comp = other.m_comp;
         m_pRoot = clone_subtree(other.m_pRoot);
     };
     BinaryTree(BinaryTree &&other){ // Move constructor
         std::unique_lock lock(other.m_mutex);
+        m_comp = other.m_comp;
         m_pRoot = exchange(other.m_pRoot, nullptr);
     };
 
