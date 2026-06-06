@@ -4,7 +4,8 @@ LDFLAGS = -pthread # Añadido -pthread
 
 TARGET = main
 SRCS = main.cpp \
-	   BinaryTreeDemo.cpp
+	   BinaryTreeDemo.cpp \
+	   AVLTreeDemo.cpp
 # 	   DemoVector.cpp
 # macros.cpp vector.cpp
 

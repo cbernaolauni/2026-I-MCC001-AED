@@ -33,5 +33,6 @@ int main() {
     // DemoConcurrentVector();
     // ListsDemo();
     DemoBinaryTree();
+    DemoAVLTree();
     return 0;
 }

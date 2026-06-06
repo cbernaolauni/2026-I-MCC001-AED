@@ -155,7 +155,7 @@ public:
     backward_postorder_iterator rpostorder_begin()  { return backward_postorder_iterator(m_pRoot); }
     backward_postorder_iterator rpostorder_end()    { return backward_postorder_iterator(nullptr); }
 
-    // ── ForEach / FirstThat (thread-safe, inorder por defecto) ────────────────
+    // ForEach / FirstThat
     template <typename Func, typename... Args>
     void ForEach(Func func, Args... args) {
         std::shared_lock lock(m_mutex);
@@ -187,9 +187,21 @@ public:
     }
 
     template <typename Func, typename... Args>
+    void ReversePreorderForEach(Func func, Args... args) {
+        std::shared_lock lock(m_mutex);
+        ::ForEach(rpreorder_begin(), rpreorder_end(), func, args...);
+    }
+
+    template <typename Func, typename... Args>
     void PostorderForEach(Func func, Args... args) {
         std::shared_lock lock(m_mutex);
         ::ForEach(postorder_begin(), postorder_end(), func, args...);
+    }
+
+    template <typename Func, typename... Args>
+    void ReversePostorderForEach(Func func, Args... args) {
+        std::shared_lock lock(m_mutex);
+        ::ForEach(rpostorder_begin(), rpostorder_end(), func, args...);
     }
 
     friend ostream& operator<<(ostream& os, const MySelf& tree) {
@@ -211,7 +223,7 @@ public:
         stringstream ss;
         auto* self = const_cast<MySelf*>(this);
         for (auto it = self->inorder_begin(); it != self->inorder_end(); ++it)
-            ss << it.getNode()-> to_string() << endl;
+            ss << it.getNode()-> to_string() << "\n";
         return ss.str();
     }
 
@@ -255,8 +267,5 @@ private:
     }
 
 };
-
-
-
 
 #endif // __BINARY_TREE_H__

@@ -3,4 +3,5 @@
 
 //void ListsDemo();
 void DemoBinaryTree();
+void DemoAVLTree();
 #endif // __LISTS_H__
