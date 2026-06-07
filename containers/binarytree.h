@@ -13,12 +13,17 @@
 #include "../foreach.h"
 #include "traits.h"
 
-template <typename T>
+template <typename T, typename Derived = void>
 class BinaryTreeNode{
 public:
     using value_type = T;
-    using Node       = BinaryTreeNode<T>;
+    using Node       = BinaryTreeNode<T, Derived>;
     using NodePtr    = Node*;
+    using ConcretePtr = std::conditional_t<
+        std::is_void_v<Derived>,
+        BinaryTreeNode<T, Derived>*,
+        Derived*
+    >;
 protected:
     value_type m_data;
     Ref        m_ref;
@@ -65,8 +70,8 @@ public:
     Ref&            getRefRef()     { return m_ref; }
     void            setRef(Ref ref) { m_ref = ref; }
 
-    NodePtr         getChild(size_t pos) const { return m_pChild[pos]; }
-    NodePtr&        getChildRef(size_t pos)    { return m_pChild[pos]; }
+    ConcretePtr     getChild   (size_t pos) const { return static_cast<ConcretePtr>(m_pChild[pos]); }
+    NodePtr&        getChildRef(size_t pos)       { return m_pChild[pos]; }
     void            setChild(size_t pos, NodePtr pChild) { m_pChild[pos] = pChild; }
 
     NodePtr         getParent() const { return m_pParent; }
