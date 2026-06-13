@@ -30,15 +30,12 @@ public:
     public:
         using NodePtr = AVLNode*;
 
-        size_t m_height = 1;
+        Ref m_height = 1;
 
         AVLNode(const value_type& data, const Ref& ref,
                 AVLNode* left = nullptr, AVLNode* right = nullptr,
                 AVLNode* parent = nullptr)
-            : BaseNode(data, ref,
-                       static_cast<BaseNodePtr>(left),
-                       static_cast<BaseNodePtr>(right),
-                       static_cast<BaseNodePtr>(parent))
+            : BaseNode(data, ref, left, right, parent)
             , m_height(1)
         {}
 
@@ -53,12 +50,12 @@ public:
 
         // getChild() override — devuelve AVLNode* directamente
         AVLNode* getChild(size_t pos) const override {
-            return static_cast<AVLNode*>(this->m_pChild[pos]);
+            return as_avl(this->m_pChild[pos]);
         }
 
-        static size_t height(BaseNodePtr p) {
+        static Ref height(BaseNodePtr p) {
             if (!p) return 0;
-            return static_cast<AVLNode*>(p)->m_height;
+            return as_avl(p)->m_height;
         }
 
         void update_height() {
@@ -67,8 +64,7 @@ public:
         }
 
         Ref balance_factor() const {
-            return static_cast<Ref>(height(this->m_pChild[0]))
-                 - static_cast<Ref>(height(this->m_pChild[1]));
+            return height(this->m_pChild[0]) - height(this->m_pChild[1]);
         }
 
         string to_string() const override {
@@ -83,11 +79,17 @@ public:
 
     using NodePtr    = AVLNode*;
 
-private:
-    AVLNode* avlRoot() const {
-        return static_cast<AVLNode*>(this->m_pRoot);
+protected:
+    // Para castear BaseNodePtr a NodePtr
+    static NodePtr as_avl(BaseNodePtr p) {
+        return static_cast<NodePtr>(p);
     }
 
+    NodePtr avlRoot() const {
+        return as_avl(this->m_pRoot);
+    }
+
+private:
     static Ref height(NodePtr p) {
         return AVLNode::height(p);
     }
@@ -230,7 +232,7 @@ public:
         stringstream ss;
         auto* self = const_cast<MySelf*>(this);
         for (auto it = self->inorder_begin(); it != self->inorder_end(); ++it)
-            ss << static_cast<NodePtr>(it.getNode())->to_string() << "\n";
+            ss << as_avl(it.getNode())->to_string() << "\n";
         return ss.str();
     }
     
