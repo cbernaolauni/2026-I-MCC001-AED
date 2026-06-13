@@ -31,7 +31,7 @@ void ForEach(Container& v1, Func func, Args &&... args){
     ForEach(v1.begin(), v1.end(), func, forward<Args>(args)...);
 }
 
-// Range Proxy para iteración segura con lock RAII
+// Range proxy para iteradores seguros (mantiene el lock durante el uso)
 template <typename Iterator, typename Mutex>
 class SafeIteratorRange {
 private:
@@ -55,5 +55,18 @@ public:
     Iterator begin() { return m_begin; }
     Iterator end()   { return m_end; }
 };
+
+// FirstThat seguro con lock
+template <typename Mutex, typename Iterator, typename Func, typename... Args>
+SafeIteratorRange<Iterator, Mutex> FirstThatSafeRange(Mutex& mutex, Iterator begin, Iterator end, Func func, Args&&... args) {
+    std::shared_lock lock(mutex);
+    for (auto it = begin; it != end; ++it) {
+        if (func(*it, std::forward<Args>(args)...)) {
+            auto it_next = it; ++it_next;
+            return SafeIteratorRange<Iterator, Mutex>(it, it_next, mutex);
+        }
+    }
+    return SafeIteratorRange<Iterator, Mutex>(end, end, mutex);
+}
 
 #endif // __FOREACH_H__

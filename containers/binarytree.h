@@ -185,6 +185,17 @@ public:
         return SafeIteratorRange(rpostorder_begin(), rpostorder_end(), m_mutex);
     }
 
+    // FirstThat / ReverseFirstThat 
+    template <typename Func, typename... Args>
+    auto FirstThat(Func func, Args&&... args) {
+        return ::FirstThatSafeRange(m_mutex, inorder_begin(), inorder_end(), func, std::forward<Args>(args)...);
+    }
+
+    template <typename Func, typename... Args>
+    auto ReverseFirstThat(Func func, Args&&... args) {
+        return ::FirstThatSafeRange(m_mutex, rinorder_begin(), rinorder_end(), func, std::forward<Args>(args)...);
+    }
+
     friend ostream& operator<<(ostream& os, const MySelf& tree) {
         std::shared_lock lock(tree.m_mutex);
         tree.write_node(os, tree.m_pRoot);

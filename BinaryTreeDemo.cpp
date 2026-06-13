@@ -55,20 +55,15 @@ void DemoBinaryTree() {
     for (auto& x : tree.ReversePostorderForEach()) print(x);
     cout << endl;
 
-    // 3. Búsqueda manual con iterador
-    cout << "\n=== Búsqueda manual ===" << endl;
+    // 3. FirstThat usando Range Proxy
+    cout << "\n=== FirstThat ===" << endl;
+    auto first = tree.FirstThat(isEven);
+        if (first.begin() != first.end())
+            cout << "Primer par (inorder): " << *first.begin() << endl;
 
-    auto it = tree.inorder_begin();
-    auto end = tree.inorder_end();
-    while (it != end && !isEven(*it)) ++it;
-    if (it != end)
-        cout << "Primer par (inorder): " << *it << endl;
-
-    auto rit = tree.rinorder_begin();
-    auto rend = tree.rinorder_end();
-    while (rit != rend && !isEven(*rit)) ++rit;
-    if (rit != rend)
-        cout << "Primer par (reverse inorder): " << *rit << endl;
+    auto reverse = tree.ReverseFirstThat(isEven);
+        if (reverse.begin() != reverse.end())
+            cout << "Primer par (reverse inorder): " << *reverse.begin() << endl;
 
     // 4. Exportar a TXT
     cout << "\n=== Exportar a treeAvlOut.txt ===" << endl;
