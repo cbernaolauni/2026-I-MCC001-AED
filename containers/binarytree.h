@@ -7,112 +7,108 @@
 #include <shared_mutex>
 #include <mutex>
 #include <utility>
+#include <type_traits>
+#include <functional>
 #include "general_iterator.h"
 #include "binaryTreeIterator.h"
 #include "../types.h"
 #include "../foreach.h"
-#include "traits.h"
 
-template <typename T, typename Derived = void>
-class BinaryTreeNode{
-public:
+template <typename T>
+struct AscendingBinaryTreeTrait {
     using value_type = T;
-    using Node       = BinaryTreeNode<T, Derived>;
-    using NodePtr    = Node*;
-    using ConcretePtr = std::conditional_t<
-        std::is_void_v<Derived>,
-        BinaryTreeNode<T, Derived>*,
-        Derived*
-    >;
-protected:
-    value_type m_data;
-    Ref        m_ref;
-    NodePtr    m_pChild[2] = {nullptr, nullptr};
-    NodePtr    m_pParent = nullptr;
-
-public:
-    BinaryTreeNode(const value_type& data, const Ref& ref, 
-        NodePtr left = nullptr, NodePtr right = nullptr, NodePtr parent = nullptr)
-        : m_data(data), m_ref(ref), m_pParent(parent)
-    {
-        m_pChild[0] = left;
-        m_pChild[1] = right;
-    }
-    // copy constructor ... tiene error
-    BinaryTreeNode(const BinaryTreeNode& other)
-        : m_data(other.m_data), m_ref(other.m_ref), m_pParent(nullptr)
-    {
-        m_pChild[0] = other.m_pChild[0] ? new Node(*other.m_pChild[0]) : nullptr;
-        m_pChild[1] = other.m_pChild[1] ? new Node(*other.m_pChild[1]) : nullptr;
-
-        if (m_pChild[0]) m_pChild[0]->m_pParent = this;
-        if (m_pChild[1]) m_pChild[1]->m_pParent = this;
-    }
-    // Corregir con exchange
-    BinaryTreeNode(BinaryTreeNode&& other) noexcept
-        : m_data(std::move(other.m_data)), m_ref(std::move(other.m_ref)), m_pParent(std::exchange(other.m_pParent, nullptr))
-    {
-        m_pChild[0] = exchange(other.m_pChild[0], nullptr);
-        m_pChild[1] = exchange(other.m_pChild[1], nullptr);
-
-        if (m_pChild[0]) m_pChild[0]->m_pParent = this;
-        if (m_pChild[1]) m_pChild[1]->m_pParent = this;
-    }
-    ~BinaryTreeNode() {
-        delete m_pChild[0];
-        delete m_pChild[1];
-    };
-
-    value_type      getData() const { return m_data; }
-    value_type&     getDataRef()    { return m_data; }
-    void            setData(value_type data) { m_data = data; }
-    Ref             getRef() const  { return m_ref; }
-    Ref&            getRefRef()     { return m_ref; }
-    void            setRef(Ref ref) { m_ref = ref; }
-
-    ConcretePtr     getChild   (size_t pos) const { return static_cast<ConcretePtr>(m_pChild[pos]); }
-    NodePtr&        getChildRef(size_t pos)       { return m_pChild[pos]; }
-    void            setChild(size_t pos, NodePtr pChild) { m_pChild[pos] = pChild; }
-
-    NodePtr         getParent() const { return m_pParent; }
-    void            setParent(NodePtr pParent) { m_pParent = pParent; }
-
-    string to_string() const {
-        stringstream ss;
-        ss << "Node(data: " << m_data << ", ref: " << m_ref << ")";
-        return ss.str();
-    }
-    // Cuidado: en el disco hay posiciones dentro del archivo,
-    //          en memoria hay punteros
-    friend ostream& operator<<(ostream& os, 
-        const BinaryTreeNode& node) {
-        os << node.m_data << " " << node.m_ref;
-        return os;
-    }
-
-    // Cuidado: en el disco hay posiciones dentro del archivo,
-    //          en memoria hay punteros
-    friend istream& operator>>(istream& is, 
-        BinaryTreeNode& node) {
-        is >> node.m_data >> node.m_ref;
-        return is;
-    }
+    using Comp       = less<T>;
 };
 
 template <typename T>
-using AscendingBinaryTreeTrait  = AscendingContainerTrait <T, BinaryTreeNode>;
-
-template <typename T>
-using DescendingBinaryTreeTrait = DescendingContainerTrait<T, BinaryTreeNode>;
+struct DescendingBinaryTreeTrait {
+    using value_type = T;
+    using Comp       = greater<T>;
+};
 
 template <typename Traits>
 class BinaryTree{
 public:
     using value_type = typename Traits::value_type;
-    using Node       = typename Traits::Node;
     using Comp       = typename Traits::Comp;
-    using NodePtr    = Node*;
     using MySelf     = BinaryTree<Traits>;
+
+    class Node {
+    public:
+        using NodePtr = Node*;
+
+        value_type m_data;
+        Ref        m_ref;
+        NodePtr    m_pChild[2] = {nullptr, nullptr};
+        NodePtr    m_pParent   = nullptr;
+
+        Node(const value_type& data, const Ref& ref,
+             NodePtr left = nullptr, NodePtr right = nullptr,
+             NodePtr parent = nullptr)
+            : m_data(data), m_ref(ref), m_pParent(parent)
+        {
+            m_pChild[0] = left;
+            m_pChild[1] = right;
+        }
+
+        Node(const Node& other)
+            : m_data(other.m_data), m_ref(other.m_ref), m_pParent(nullptr)
+        {
+            m_pChild[0] = other.m_pChild[0] ? new Node(*other.m_pChild[0]) : nullptr;
+            m_pChild[1] = other.m_pChild[1] ? new Node(*other.m_pChild[1]) : nullptr;
+            if (m_pChild[0]) m_pChild[0]->m_pParent = this;
+            if (m_pChild[1]) m_pChild[1]->m_pParent = this;
+        }
+
+        Node(Node&& other) noexcept
+            : m_data   (std::move(other.m_data))
+            , m_ref    (std::move(other.m_ref))
+            , m_pParent(std::exchange(other.m_pParent, nullptr))
+        {
+            m_pChild[0] = std::exchange(other.m_pChild[0], nullptr);
+            m_pChild[1] = std::exchange(other.m_pChild[1], nullptr);
+            if (m_pChild[0]) m_pChild[0]->m_pParent = this;
+            if (m_pChild[1]) m_pChild[1]->m_pParent = this;
+        }
+
+        virtual ~Node() {
+            delete m_pChild[0];
+            delete m_pChild[1];
+        }
+
+        value_type  getData()    const         { return m_data; }
+        value_type& getDataRef()               { return m_data; }
+        void        setData(value_type data)   { m_data = data; }
+
+        Ref   getRef()    const { return m_ref; }
+        Ref&  getRefRef()       { return m_ref; }
+        void  setRef(Ref ref)   { m_ref = ref;  }
+
+        virtual NodePtr getChild   (size_t pos) const { return m_pChild[pos]; }
+        NodePtr&        getChildRef(size_t pos)       { return m_pChild[pos]; }
+        void            setChild(size_t pos, NodePtr p) { m_pChild[pos] = p; }
+
+        NodePtr getParent()          const { return m_pParent; }
+        void    setParent(NodePtr p)       { m_pParent = p;    }
+
+        virtual string to_string() const {
+            stringstream ss;
+            ss << "Node(data: " << m_data << ", ref: " << m_ref << ")";
+            return ss.str();
+        }
+
+        friend ostream& operator<<(ostream& os, const Node& node) {
+            os << node.m_data << " " << node.m_ref;
+            return os;
+        }
+
+        friend istream& operator>>(istream& is, Node& node) {
+            is >> node.m_data >> node.m_ref;
+            return is;
+        }
+    };
+
+    using NodePtr    = Node*;
 
     using forward_inorder_iterator    = BinaryTreeIterator<MySelf, TraversalOrder::Inorder,   TraversalDirection::Forward>;
     using backward_inorder_iterator   = BinaryTreeIterator<MySelf, TraversalOrder::Inorder,   TraversalDirection::Backward>;
@@ -162,53 +158,31 @@ public:
     backward_postorder_iterator rpostorder_begin()  { return backward_postorder_iterator(m_pRoot); }
     backward_postorder_iterator rpostorder_end()    { return backward_postorder_iterator(nullptr); }
 
-    // ForEach / FirstThat
-    template <typename Func, typename... Args>
-    void ForEach(Func func, Args... args) {
-        std::shared_lock lock(m_mutex);
-        ::ForEach(inorder_begin(), inorder_end(), func, args...);
+    // Range Proxies - Inorder
+    auto ForEach() {
+        return SafeIteratorRange(inorder_begin(), inorder_end(), m_mutex);
     }
 
-    template <typename Func, typename... Args>
-    void ReverseForEach(Func func, Args... args) {
-        std::shared_lock lock(m_mutex);
-        ::ForEach(rinorder_begin(), rinorder_end(), func, args...);
+    auto ReverseForEach() {
+        return SafeIteratorRange(rinorder_begin(), rinorder_end(), m_mutex);
     }
 
-    template <typename Func, typename... Args>
-    auto FirstThat(Func func, Args... args) {
-        std::shared_lock lock(m_mutex);
-        return ::FirstThat(inorder_begin(), inorder_end(), func, args...);
+    // Range Proxies - Preorder
+    auto PreorderForEach() {
+        return SafeIteratorRange(preorder_begin(), preorder_end(), m_mutex);
     }
 
-    template <typename Func, typename... Args>
-    auto ReverseFirstThat(Func func, Args... args) {
-        std::shared_lock lock(m_mutex);
-        return ::FirstThat(rinorder_begin(), rinorder_end(), func, args...);
+    auto ReversePreorderForEach() {
+        return SafeIteratorRange(rpreorder_begin(), rpreorder_end(), m_mutex);
     }
 
-    template <typename Func, typename... Args>
-    void PreorderForEach(Func func, Args... args) {
-        std::shared_lock lock(m_mutex);
-        ::ForEach(preorder_begin(), preorder_end(), func, args...);
+    // Range Proxies - Postorder
+    auto PostorderForEach() {
+        return SafeIteratorRange(postorder_begin(), postorder_end(), m_mutex);
     }
 
-    template <typename Func, typename... Args>
-    void ReversePreorderForEach(Func func, Args... args) {
-        std::shared_lock lock(m_mutex);
-        ::ForEach(rpreorder_begin(), rpreorder_end(), func, args...);
-    }
-
-    template <typename Func, typename... Args>
-    void PostorderForEach(Func func, Args... args) {
-        std::shared_lock lock(m_mutex);
-        ::ForEach(postorder_begin(), postorder_end(), func, args...);
-    }
-
-    template <typename Func, typename... Args>
-    void ReversePostorderForEach(Func func, Args... args) {
-        std::shared_lock lock(m_mutex);
-        ::ForEach(rpostorder_begin(), rpostorder_end(), func, args...);
+    auto ReversePostorderForEach() {
+        return SafeIteratorRange(rpostorder_begin(), rpostorder_end(), m_mutex);
     }
 
     friend ostream& operator<<(ostream& os, const MySelf& tree) {

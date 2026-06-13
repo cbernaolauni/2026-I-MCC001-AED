@@ -32,51 +32,55 @@ void DemoBinaryTree() {
     cout << "\n=== Recorridos ===" << endl;
 
     cout << "Inorder    forward  (asc): ";
-    tree.ForEach(print);
+    for (auto& x : tree.ForEach()) print(x);
     cout << endl;
 
     cout << "Inorder    backward (desc): ";
-    tree.ReverseForEach(print);
+    for (auto& x : tree.ReverseForEach()) print(x);
     cout << endl;
 
     cout << "Preorder   forward : ";
-    tree.PreorderForEach(print);
+    for (auto& x : tree.PreorderForEach()) print(x);
     cout << endl;
 
     cout << "Preorder   backward : ";
-    tree.ReversePreorderForEach(print);
+    for (auto& x : tree.ReversePreorderForEach()) print(x);
     cout << endl;
 
     cout << "Postorder  forward : ";
-    tree.PostorderForEach(print);
+    for (auto& x : tree.PostorderForEach()) print(x);
     cout << endl;
 
     cout << "Postorder  backward : ";
-    tree.ReversePostorderForEach(print);
+    for (auto& x : tree.ReversePostorderForEach()) print(x);
     cout << endl;
 
-    // 3. FirstThat
-    cout << "\n=== FirstThat ===" << endl;
+    // 3. Búsqueda manual con iterador
+    cout << "\n=== Búsqueda manual ===" << endl;
 
-    auto it = tree.FirstThat(isEven);
-    if (it != tree.inorder_end())
+    auto it = tree.inorder_begin();
+    auto end = tree.inorder_end();
+    while (it != end && !isEven(*it)) ++it;
+    if (it != end)
         cout << "Primer par (inorder): " << *it << endl;
 
-    auto rit = tree.ReverseFirstThat(isEven);
-    if (rit != tree.rinorder_end()) 
+    auto rit = tree.rinorder_begin();
+    auto rend = tree.rinorder_end();
+    while (rit != rend && !isEven(*rit)) ++rit;
+    if (rit != rend)
         cout << "Primer par (reverse inorder): " << *rit << endl;
 
     // 4. Exportar a TXT
-    cout << "\n=== Exportar a treeOut.txt ===" << endl;
+    cout << "\n=== Exportar a treeAvlOut.txt ===" << endl;
     {
-        ofstream file("treeOut.txt");
+        ofstream file("treeAvlOut.txt");
         file << tree;
     }
 
     // Mostrar el contenido del archivo para entender el formato
-    cout << "Contenido de treeOut.txt:" << endl;
+    cout << "Contenido de treeAvlOut.txt:" << endl;
     {
-        ifstream file("treeOut.txt");
+        ifstream file("treeAvlOut.txt");
         cout << file.rdbuf();
     }
 
@@ -84,12 +88,12 @@ void DemoBinaryTree() {
     cout << "\n=== Leer desde tree.txt ===" << endl;
     AscTree tree2;
     {
-        ifstream file("tree.txt");
+        ifstream file("avltree.txt");
         file >> tree2;
     }
 
     cout << "Inorder del árbol leído: ";
-    tree2.ForEach(print);
+    for (auto& x : tree2.ForEach()) print(x);
     cout << endl;
 
     // 6. Copy constructor
@@ -97,14 +101,22 @@ void DemoBinaryTree() {
     AscTree tree3 = tree;
     tree3.insert(9, 7);
 
-    cout << "Original : ";  tree.ForEach(print);  cout << endl;
-    cout << "Copia    : ";  tree3.ForEach(print); cout << endl;
+    cout << "Original : ";
+    for (auto& x : tree.ForEach()) print(x);
+    cout << endl;
+    cout << "Copia    : ";
+    for (auto& x : tree3.ForEach()) print(x);
+    cout << endl;
 
     // 7. Move constructor
     cout << "\n=== Move constructor ===" << endl;
     AscTree tree4 = std::move(tree3);
-    cout << "Movido   : ";  tree4.ForEach(print); cout << endl;
-    cout << "Vaciado  : ";  tree3.ForEach(print); cout << endl;
+    cout << "Movido   : ";
+    for (auto& x : tree4.ForEach()) print(x);
+    cout << endl;
+    cout << "Vaciado  : ";
+    for (auto& x : tree3.ForEach()) print(x);
+    cout << endl;
 
     // 8. Árbol descendente
     cout << "\n=== Árbol descendente ===" << endl;
@@ -119,7 +131,7 @@ void DemoBinaryTree() {
     desc.insert(2, 7);
 
     cout << "Inorder desc: ";
-    desc.ForEach(print);
+    for (auto& x : desc.ForEach()) print(x);
     cout << endl;
 
     cout << "Operador <<: " << endl;

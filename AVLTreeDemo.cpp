@@ -27,7 +27,7 @@ void DemoAVLTree() {
 
     // 2. Inorder debe estar ordenado (igual que BST normal)
     cout << "\nInorder (debe ser ascendente):" << endl;
-    tree.ForEach(print);
+    for (auto& x : tree.ForEach()) print(x);
     cout << endl;
 
     // 3. Factor de balance de cada nodo
@@ -47,7 +47,7 @@ void DemoAVLTree() {
     ll.insert(5, 4);   // RR -> rotate_left
 
     cout << "Inorder: ";
-    ll.ForEach(print);
+    for (auto& x : ll.ForEach()) print(x);
     cout << endl;
     cout << ll.ToStringVerbose() << endl;
 
@@ -59,16 +59,27 @@ void DemoAVLTree() {
     lr.insert(2, 2);   // LR: rotate_left(1) + rotate_right(3)
 
     cout << "Inorder: ";
-    lr.ForEach(print);
+    for (auto& x : lr.ForEach()) print(x);
     cout << endl;
     cout << lr.ToStringVerbose() << endl;
 
     // 6. Recorridos (heredados de BinaryTree)
     cout << "=== Recorridos ===" << endl;
-    cout << "Inorder    forward : "; tree.ForEach(print);         cout << endl;
-    cout << "Inorder    backward: "; tree.ReverseForEach(print);  cout << endl;
-    cout << "Preorder   forward : "; tree.PreorderForEach(print); cout << endl;
-    cout << "Postorder  forward : "; tree.PostorderForEach(print);cout << endl;
+    cout << "Inorder    forward : ";
+    for (auto& x : tree.ForEach()) print(x);
+    cout << endl;
+
+    cout << "Inorder    backward: ";
+    for (auto& x : tree.ReverseForEach()) print(x);
+    cout << endl;
+
+    cout << "Preorder   forward : ";
+    for (auto& x : tree.PreorderForEach()) print(x);
+    cout << endl;
+
+    cout << "Postorder  forward : ";
+    for (auto& x : tree.PostorderForEach()) print(x);
+    cout << endl;
 
     cout << "Operador <<: " << endl;
     cout << tree;

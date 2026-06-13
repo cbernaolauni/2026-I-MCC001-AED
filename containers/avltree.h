@@ -3,66 +3,17 @@
 
 #include "binarytree.h"
 
-// AVLNode — extiende BinaryTreeNode agregando altura
 template <typename T>
-class AVLNode : public BinaryTreeNode<T, AVLNode<T>> {
-public:
-    using Base    = BinaryTreeNode<T, AVLNode<T>>;
-    using Node    = AVLNode<T>;
-    using NodePtr = Node*;
-    Ref m_height = 1;
-
-    AVLNode(const T& data, const Ref& ref,
-            NodePtr left   = nullptr,
-            NodePtr right  = nullptr,
-            NodePtr parent = nullptr)
-        : Base(data, ref,
-               static_cast<typename Base::NodePtr>(left),
-               static_cast<typename Base::NodePtr>(right),
-               static_cast<typename Base::NodePtr>(parent))
-        , m_height(1)
-    {}
-
-    AVLNode(const AVLNode& other)
-        : Base(other), m_height(other.m_height)
-    {}
-
-    AVLNode(AVLNode&& other) noexcept
-        : Base(std::move(other)), m_height(std::exchange(other.m_height, 0))
-    {}
-
-    static Ref height(typename Base::NodePtr p) {
-        if (!p) return 0;
-        return static_cast<AVLNode*>(p)->m_height;
-    }
-
-    void update_height() {
-        m_height = 1 + max(height(this->m_pChild[0]),
-                           height(this->m_pChild[1]));
-    }
-
-    Ref balance_factor() const {
-        return height(this->m_pChild[0]) - height(this->m_pChild[1]);
-    }
-
-    string to_string() const {
-        stringstream ss;
-        ss << "AVLNode(data: " << this->m_data
-           << ", ref: "        << this->m_ref
-           << ", h: "          << m_height
-           << ", bf: "         << balance_factor() << ")";
-        return ss.str();
-    }
+struct AscendingAVLTrait {
+    using value_type = T;
+    using Comp       = less<T>;
 };
 
-
-// Traits para AVL
 template <typename T>
-using AscendingAVLTrait  = AscendingContainerTrait <T, AVLNode>;
-
-template <typename T>
-using DescendingAVLTrait = DescendingContainerTrait<T, AVLNode>;
-
+struct DescendingAVLTrait {
+    using value_type = T;
+    using Comp       = greater<T>;
+};
 
 // AVLTree — hereda de BinaryTree y sobreescribe insert con balanceo
 template <typename Traits>
@@ -70,14 +21,75 @@ class AVLTree : public BinaryTree<Traits> {
 public:
     using Base       = BinaryTree<Traits>;
     using value_type = typename Traits::value_type;
-    using Node       = typename Traits::Node;       // es AVLNode<T>
-    using NodePtr    = Node*;
     using Comp       = typename Traits::Comp;
+    using BaseNode   = typename Base::Node;
+    using BaseNodePtr= typename Base::NodePtr;
     using MySelf     = AVLTree<Traits>;
 
+    class AVLNode : public BaseNode {
+    public:
+        using NodePtr = AVLNode*;
+
+        size_t m_height = 1;
+
+        AVLNode(const value_type& data, const Ref& ref,
+                AVLNode* left = nullptr, AVLNode* right = nullptr,
+                AVLNode* parent = nullptr)
+            : BaseNode(data, ref,
+                       static_cast<BaseNodePtr>(left),
+                       static_cast<BaseNodePtr>(right),
+                       static_cast<BaseNodePtr>(parent))
+            , m_height(1)
+        {}
+
+        AVLNode(const AVLNode& other)
+            : BaseNode(other), m_height(other.m_height)
+        {}
+
+        AVLNode(AVLNode&& other) noexcept
+            : BaseNode(std::move(other))
+            , m_height(std::exchange(other.m_height, 0))
+        {}
+
+        // getChild() override — devuelve AVLNode* directamente
+        AVLNode* getChild(size_t pos) const override {
+            return static_cast<AVLNode*>(this->m_pChild[pos]);
+        }
+
+        static size_t height(BaseNodePtr p) {
+            if (!p) return 0;
+            return static_cast<AVLNode*>(p)->m_height;
+        }
+
+        void update_height() {
+            m_height = 1 + max(height(this->m_pChild[0]),
+                               height(this->m_pChild[1]));
+        }
+
+        Ref balance_factor() const {
+            return static_cast<Ref>(height(this->m_pChild[0]))
+                 - static_cast<Ref>(height(this->m_pChild[1]));
+        }
+
+        string to_string() const override {
+            stringstream ss;
+            ss << "AVLNode(data: " << this->m_data
+               << ", ref: "        << this->m_ref
+               << ", h: "          << m_height
+               << ", bf: "         << balance_factor() << ")";
+            return ss.str();
+        }
+    };
+
+    using NodePtr    = AVLNode*;
+
 private:
+    AVLNode* avlRoot() const {
+        return static_cast<AVLNode*>(this->m_pRoot);
+    }
+
     static Ref height(NodePtr p) {
-        return Node::height(p);
+        return AVLNode::height(p);
     }
 
     static Ref balance_factor(NodePtr p) {
@@ -184,7 +196,7 @@ private:
     {
         // posición vacía
         if (!pNode) {
-            return new Node(value, ref, nullptr, nullptr, parent);
+            return new AVLNode(value, ref, nullptr, nullptr, parent);
         }
 
         size_t pos = !this->m_comp(value, pNode->getDataRef());
@@ -198,7 +210,7 @@ private:
 
     void write_node(ostream& os, NodePtr p) const {
         if (!p) { os << "NULL\n"; return; }
-        os << *p << "\n";   // usa operator<< de BinaryTreeNode
+        os << *p << "\n";
         write_node(os, p->getChild(0));
         write_node(os, p->getChild(1));
     }
@@ -206,10 +218,9 @@ private:
 public:
     AVLTree()  = default;
 
-    // Insert (sobreescribe BinaryTree::insert)
     void insert(const value_type& value, Ref ref) {
         std::unique_lock lock(this->m_mutex);
-        this->m_pRoot = avl_insert(this->m_pRoot, value, ref);
+        this->m_pRoot = avl_insert(avlRoot(), value, ref);
         if (this->m_pRoot) this->m_pRoot->setParent(nullptr);
     }
 
@@ -225,7 +236,7 @@ public:
     
     friend ostream& operator<<(ostream& os, const MySelf& tree) {
         std::shared_lock lock(tree.m_mutex);
-        tree.write_node(os, tree.m_pRoot);
+        tree.write_node(os, tree.avlRoot());
         return os;
     }
 };
