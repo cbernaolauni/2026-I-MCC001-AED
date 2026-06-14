@@ -121,6 +121,28 @@ protected:
     NodePtr m_pRoot = nullptr;
     Comp    m_comp;
     mutable shared_mutex m_mutex;
+
+    virtual NodePtr make_node(const value_type& value, Ref ref, NodePtr parent) {
+        return new Node(value, ref, nullptr, nullptr, parent);
+    }
+
+    virtual NodePtr post_insert(NodePtr pNode) {
+        return pNode;
+    }
+
+    NodePtr internal_insert(NodePtr pNode, const value_type& value, Ref ref,
+                            NodePtr parent = nullptr)
+    {
+        if (!pNode)
+            return make_node(value, ref, parent);
+
+        size_t pos = !m_comp(value, pNode->getDataRef());
+        NodePtr child = internal_insert(pNode->getChild(pos), value, ref, pNode);
+        pNode->setChild(pos, child);
+        child->setParent(pNode);
+
+        return post_insert(pNode);   // hook para AVL
+    }
 public:
     BinaryTree() {}
     BinaryTree(const BinaryTree &other){ // Copy constructor
@@ -136,7 +158,8 @@ public:
 
     void insert(const value_type &value, Ref ref){
         std::unique_lock lock(m_mutex);
-        internal_insert(m_pRoot, value, ref);
+        m_pRoot = internal_insert(m_pRoot, value, ref);
+        if (m_pRoot) m_pRoot->setParent(nullptr);
     }
 
     ~BinaryTree() {
@@ -220,14 +243,6 @@ public:
     }
 
 private:
-    void internal_insert(NodePtr &pNode, const value_type &value, Ref ref, NodePtr parent = nullptr){
-        if( !pNode ){
-            pNode = new Node(value, ref, nullptr, nullptr, parent);
-            return;
-        }
-        size_t pos = !m_comp(value, pNode->getDataRef());
-        internal_insert(pNode->getChildRef(pos), value, ref, pNode);
-    }
 
     static NodePtr clone_subtree(const NodePtr src, NodePtr parent = nullptr){
         if( !src ) return nullptr;

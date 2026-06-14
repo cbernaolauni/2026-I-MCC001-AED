@@ -87,8 +87,8 @@ public:
         }
     }
  
-    value_type& operator*()  const { return m_pCurrent->getDataRef(); }
-    value_type* operator->() const { return &m_pCurrent->getDataRef(); }
+    NodePtr operator*()  const { return m_pCurrent; }
+    NodePtr* operator->() const { return &m_pCurrent; }
     NodePtr     getNode()    const { return m_pCurrent; }
  
     MySelf& operator++()    { advance(); return *this; }

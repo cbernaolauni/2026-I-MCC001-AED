@@ -21,4 +21,7 @@ using TS = string;
 
 using Ref = long;
 
+using Height = long;
+using Side = int;
+
 #endif // __TYPES_H__

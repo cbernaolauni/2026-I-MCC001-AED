@@ -30,12 +30,12 @@ public:
     public:
         using NodePtr = AVLNode*;
 
-        Ref m_height = 1;
+        Height m_height = 1;
 
-        AVLNode(const value_type& data, const Ref& ref,
+        AVLNode(const value_type& data, const Height& height,
                 AVLNode* left = nullptr, AVLNode* right = nullptr,
                 AVLNode* parent = nullptr)
-            : BaseNode(data, ref, left, right, parent)
+            : BaseNode(data, height, left, right, parent)
             , m_height(1)
         {}
 
@@ -53,7 +53,7 @@ public:
             return as_avl(this->m_pChild[pos]);
         }
 
-        static Ref height(BaseNodePtr p) {
+        static Height height(BaseNodePtr p) {
             if (!p) return 0;
             return as_avl(p)->m_height;
         }
@@ -63,14 +63,14 @@ public:
                                height(this->m_pChild[1]));
         }
 
-        Ref balance_factor() const {
+        Height balance_factor() const {
             return height(this->m_pChild[0]) - height(this->m_pChild[1]);
         }
 
         string to_string() const override {
             stringstream ss;
             ss << "AVLNode(data: " << this->m_data
-               << ", ref: "        << this->m_ref
+               << ", height: "    << this->m_height
                << ", h: "          << m_height
                << ", bf: "         << balance_factor() << ")";
             return ss.str();
@@ -89,12 +89,20 @@ protected:
         return as_avl(this->m_pRoot);
     }
 
+    BaseNodePtr make_node(const value_type& value, Ref ref, BaseNodePtr parent) override {
+        return new AVLNode(value, ref, nullptr, nullptr, as_avl(parent));
+    }
+
+    BaseNodePtr post_insert(BaseNodePtr pNode) override {
+        return rebalance(as_avl(pNode));
+    }
+
 private:
-    static Ref height(NodePtr p) {
+    static Height height(NodePtr p) {
         return AVLNode::height(p);
     }
 
-    static Ref balance_factor(NodePtr p) {
+    static Height balance_factor(NodePtr p) {
         if (!p) return 0;
         return p->balance_factor();
     }
@@ -104,57 +112,37 @@ private:
     }
 
     /*  Rotación simple derecha (caso LL):    
-          y                x
+          parent           child
          / \              / \
-        x   T3    ->    T1   y
+      child   T3    ->  T1  parent 
        / \                  / \
       T1  T2              T2  T3
     */
-    static NodePtr rotate_right(NodePtr y) {
-        NodePtr x  = y->getChild(0);
-        NodePtr T2 = x->getChild(1);
-
-        // rotación
-        x->setChild(1, y);
-        y->setChild(0, T2);
-
-        // actualizar padres
-        if (T2) T2->setParent(y);
-        x->setParent(y->getParent());
-        y->setParent(x);
-
-        // actualizar alturas — primero y (ahora hijo), luego x (nueva raíz)
-        update_height(y);
-        update_height(x);
-
-        return x; // nueva raíz del subárbol
-    }
 
     /*  Rotación simple izquierda (caso RR):
-        x                  y
+        parent            child
        / \                / \
-      T1   y     ->      x   T3
+      T1   child  -> parent   T3
           / \           / \
          T2  T3        T1  T2
     */
-    static NodePtr rotate_left(NodePtr x) {
-        NodePtr y  = x->getChild(1);
-        NodePtr T2 = y->getChild(0);
 
-        // rotación
-        y->setChild(0, x);
-        x->setChild(1, T2);
+    static NodePtr rotate_node(NodePtr parent, bool rotation_left) {
+        NodePtr child = parent->getChild(rotation_left ? 1 : 0);
+        if (!child) return parent; // nothing to rotate
+        NodePtr subtree = child->getChild(rotation_left ? 0 : 1);
 
-        // actualizar padres
-        if (T2) T2->setParent(x);
-        y->setParent(x->getParent());
-        x->setParent(y);
+        child->setChild(rotation_left ? 0 : 1, parent);
+        parent->setChild(rotation_left ? 1 : 0, subtree);
 
-        // actualizar alturas
-        update_height(x);
-        update_height(y);
+        if (subtree) subtree->setParent(parent);
+        child->setParent(parent->getParent());
+        parent->setParent(child);
 
-        return y; // nueva raíz del subárbol
+        update_height(parent);
+        update_height(child);
+
+        return child;
     }
 
     // Balance
@@ -163,51 +151,25 @@ private:
     static NodePtr rebalance(NodePtr pNode) {
         update_height(pNode);
 
-        Ref bf = balance_factor(pNode);
+        Height bf = balance_factor(pNode);
 
-        // Caso LL: subárbol izquierdo pesado, hijo izq también izq-pesado
-        if (bf > 1 && balance_factor(pNode->getChild(0)) >= 0)
-            return rotate_right(pNode);
+        if (bf < -1 || bf > 1) {
+            bool right_heavy = bf < -1;
+            Side side = right_heavy ? 1 : 0;
+            NodePtr child = pNode->getChild(side);
+            if (!child) return pNode; // no child to rotate with
 
-        // Caso LR: subárbol izquierdo pesado, hijo izq der-pesado
-        if (bf > 1 && balance_factor(pNode->getChild(0)) < 0) {
-            pNode->setChild(0, rotate_left(pNode->getChild(0)));
-            pNode->getChild(0)->setParent(pNode);
-            return rotate_right(pNode);
-        }
-
-        // Caso RR: subárbol derecho pesado, hijo der también der-pesado
-        if (bf < -1 && balance_factor(pNode->getChild(1)) <= 0)
-            return rotate_left(pNode);
-
-        // Caso RL: subárbol derecho pesado, hijo der izq-pesado
-        if (bf < -1 && balance_factor(pNode->getChild(1)) > 0) {
-            pNode->setChild(1, rotate_right(pNode->getChild(1)));
-            pNode->getChild(1)->setParent(pNode);
-            return rotate_left(pNode);
+            bool double_rotation = right_heavy ? balance_factor(child) > 0
+                                            : balance_factor(child) < 0;
+            if (double_rotation) {
+                NodePtr new_child = right_heavy ? rotate_node(child, true) : rotate_node(child, false);
+                pNode->setChild(side, new_child);
+                pNode->getChild(side)->setParent(pNode);
+            }
+            return rotate_node(pNode, right_heavy);
         }
 
         return pNode;   // ya balanceado
-    }
-
-    // Insert interno
-    // Devuelve la nueva raíz del subárbol (puede cambiar tras una rotación)
-    // y llama a rebalance al retornar de la recursión.
-    NodePtr avl_insert(NodePtr pNode, const value_type& value, Ref ref,
-                       NodePtr parent = nullptr)
-    {
-        // posición vacía
-        if (!pNode) {
-            return new AVLNode(value, ref, nullptr, nullptr, parent);
-        }
-
-        size_t pos = !this->m_comp(value, pNode->getDataRef());
-        NodePtr child = avl_insert(pNode->getChild(pos), value, ref, pNode);
-        pNode->setChild(pos, child);
-        child->setParent(pNode);
-
-        // al retornar de la recursión, rebalancear este nodo
-        return rebalance(pNode);
     }
 
     void write_node(ostream& os, NodePtr p) const {
@@ -219,12 +181,6 @@ private:
 
 public:
     AVLTree()  = default;
-
-    void insert(const value_type& value, Ref ref) {
-        std::unique_lock lock(this->m_mutex);
-        this->m_pRoot = avl_insert(avlRoot(), value, ref);
-        if (this->m_pRoot) this->m_pRoot->setParent(nullptr);
-    }
 
     // ToString con altura y factor de balance
     string ToStringVerbose() const {

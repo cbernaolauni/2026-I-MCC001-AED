@@ -1,13 +1,15 @@
 #include <iostream>
+#include <fstream>
 #include "containers/avltree.h"
 
 using AVLTreeDemo = AVLTree<AscendingAVLTrait<TI>>;
 
 void DemoAVLTree() {
 
-    auto print = [](TI& val) { cout << val << " "; };
+    auto print = [](auto* node) { cout << node->getData() << " "; };
 
     // 1. Insertar
+    cout << "=== AVL Tree Demo ===" << endl;
     cout << "=== Insertar ===" << endl;
     AVLTreeDemo tree;
     tree.insert(5, 0);
@@ -27,11 +29,11 @@ void DemoAVLTree() {
 
     // 2. Inorder debe estar ordenado (igual que BST normal)
     cout << "\nInorder (debe ser ascendente):" << endl;
-    for (auto& x : tree.ForEach()) print(x);
+    for (auto x : tree.ForEach()) print(x);
     cout << endl;
 
     // 3. Factor de balance de cada nodo
-    // bf debe estar en [-1, 0, 1] para todo nodo → árbol balanceado
+    // bf debe estar en [-1, 0, 1] para todo nodo -> árbol balanceado
     cout << "\nNodos con altura y factor de balance:" << endl;
     cout << tree.ToStringVerbose() << endl;
 
@@ -47,7 +49,7 @@ void DemoAVLTree() {
     ll.insert(5, 4);   // RR -> rotate_left
 
     cout << "Inorder: ";
-    for (auto& x : ll.ForEach()) print(x);
+    for (auto x : ll.ForEach()) print(x);
     cout << endl;
     cout << ll.ToStringVerbose() << endl;
 
@@ -56,31 +58,38 @@ void DemoAVLTree() {
     AVLTreeDemo lr;
     lr.insert(3, 0);
     lr.insert(1, 1);
-    lr.insert(2, 2);   // LR: rotate_left(1) + rotate_right(3)
+    lr.insert(2, 2);
 
     cout << "Inorder: ";
-    for (auto& x : lr.ForEach()) print(x);
+    for (auto x : lr.ForEach()) print(x);
     cout << endl;
     cout << lr.ToStringVerbose() << endl;
 
     // 6. Recorridos (heredados de BinaryTree)
     cout << "=== Recorridos ===" << endl;
     cout << "Inorder    forward : ";
-    for (auto& x : tree.ForEach()) print(x);
+    for (auto x : tree.ForEach()) print(x);
     cout << endl;
 
     cout << "Inorder    backward: ";
-    for (auto& x : tree.ReverseForEach()) print(x);
+    for (auto x : tree.ReverseForEach()) print(x);
     cout << endl;
 
     cout << "Preorder   forward : ";
-    for (auto& x : tree.PreorderForEach()) print(x);
+    for (auto x : tree.PreorderForEach()) print(x);
     cout << endl;
 
     cout << "Postorder  forward : ";
-    for (auto& x : tree.PostorderForEach()) print(x);
+    for (auto x : tree.PostorderForEach()) print(x);
     cout << endl;
 
     cout << "Operador <<: " << endl;
     cout << tree;
+
+    // 4. Exportar a TXT
+    cout << "\n=== Exportar a treeAvlOut.txt ===" << endl;
+    {
+        ofstream file("treeAvlOut.txt");
+        file << tree;
+    }
 }
