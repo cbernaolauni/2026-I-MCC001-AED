@@ -21,4 +21,10 @@ using TS = string;
 
 using Ref = long;
 
+using KeyRef   = long;
+using Counter  = long;
+using Order    = int;
+using Capacity = int;
+using Count    = int;
+
 #endif // __TYPES_H__

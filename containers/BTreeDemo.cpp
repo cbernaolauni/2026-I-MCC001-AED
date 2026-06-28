@@ -2,6 +2,7 @@
 #include <time.h>
 #include <stdlib.h>
 #include <string>
+#include <iostream>
 #include "BTree.h"
 
 //const char * keys="CDAMPIWNBKEHOLJYQZFXVRTSGU";
@@ -9,18 +10,28 @@ const char * keys1 = "D1XJ2xTg8zKL9AhijOPQcEowRSp0NbW567BUfCqrs4FdtYZakHIuvGV3eM
 const char * keys2 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 const char * keys3 = "DYZakHIUwxVJ203ejOP9Qc8AdtuEop1XvTRghSNbW567BfiCqrs4FGMyzKLlmn";
 
-const int BTreeSize = 3;
-void main(int argc, char * argv[], char * envp[])
+const Order BTreeSize = 3;
+
+void BtreeDemo()
 {
-       int result, i;
-       BTree <char> bt (BTreeSize);
-       for (i = 0; keys1[i]; i++)
-       {
-               //cout<<"Inserting "<<keys1[i]<<endl;
-               result = bt.Insert(keys1[i], i*i);
-               //bt.Print(cout);
-       }
-       bt.Print(cout);
+        using CharTrait = BTreePageTrait<char>;
+        BTree<CharTrait> bt(BTreeSize);
+       
+        for (Order i = 0; keys1[i]; i++) {
+                bt.Insert(keys1[i], i * i);
+        }
+        bt.Print(cout);
+        
+        cout << "\n--- FirstThat ---\n";
+        using Node = BTree<CharTrait>::Node;
+        auto* node = bt.FirstThat([](Node& n, char target) {
+                return n.key == target;
+        }, 'q');
+        if (node)
+                cout << "Encontro: " << node->key << " -> " << node->ObjID << "\n";
+        else
+                cout << "No encontrado\n";
+
        /*for (i = 0; keys2[i]; i++)
        {
                cout << "Searching " << keys2[i] << " ";
@@ -43,7 +54,6 @@ void main(int argc, char * argv[], char * envp[])
        }
        bt.Print(cout);
        cout.flush();*/
-       return 1;
 }
 
 /*const char * keys="CDAMPIWNBKEHOLJYQZFXVRTSGU";
