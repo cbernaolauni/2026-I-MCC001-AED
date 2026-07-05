@@ -21,6 +21,16 @@ void BtreeDemo()
                 bt.Insert(keys1[i], i * i);
         }
         bt.Print(cout);
+
+        cout << "\n--- Forward iterator ---\n";
+        for (auto it = bt.begin(); it != bt.end(); ++it)
+                cout << (*it).key << "->" << (*it).ObjID << " ";
+        cout << "\n";
+ 
+        cout << "\n--- Backward iterator ---\n";
+        for (auto it = bt.rbegin(); it != bt.rend(); ++it)
+                cout << (*it).key << "->" << (*it).ObjID << " ";
+        cout << "\n";
         
         cout << "\n--- FirstThat ---\n";
         using Node = BTree<CharTrait>::Node;

@@ -9,6 +9,7 @@
 #include <assert.h>
 #include "basetrait.h"
 #include "../types.h"
+#include "BTreeIterator.h"
 
 using namespace std;
 
@@ -64,6 +65,9 @@ void remove(Container &container, Count pos)
 template <typename Traits>
 class BTree;
 
+enum class BTreeTraversalDirection;
+template <typename, BTreeTraversalDirection> class BTreeIterator;
+
 /*template <typename keyType>
 bool operator>=(const _Node<keyType>& object1, const _Node<keyType>& object2)
 { return object1.key >= object2.key;    }
@@ -94,6 +98,18 @@ struct BTreePageTrait : BaseContainerTrait<keyType, tagNode<keyType, ObjIDType>>
         using obj_type = ObjIDType;
 };
 
+template <typename keyType, typename ObjIDType = KeyRef>
+struct AscendingBTreeTrait : BTreePageTrait<keyType, ObjIDType>
+{
+        using Comp = less<keyType>;
+};
+
+template <typename keyType, typename ObjIDType = KeyRef>
+struct DescendingBTreeTrait : BTreePageTrait<keyType, ObjIDType>
+{
+        using Comp = greater<keyType>;
+};
+
 template <typename Traits>
 class CBTreePage
 // this is the in-memory version of the CBTreePage
@@ -102,6 +118,7 @@ class CBTreePage
         using ObjIDType = typename Traits::obj_type;
 
         friend class BTree<Traits>;
+        template <typename, BTreeTraversalDirection> friend class BTreeIterator;
         using BTPage = CBTreePage<Traits>;
 
 public:
@@ -115,38 +132,35 @@ public:
         bool Search(const key_type &key, ObjIDType &ObjID);
         void Print(ostream &os);
 
+        template <typename Func, typename... Args>
+        Node* Traverse(Func func, Count level, Args&&... args)
+        {
+                for (Count i = 0; i < m_KeyCount; i++)
+                {
+                        if (m_SubPages[i]) {
+                                Node* result = m_SubPages[i]->Traverse(func, level + 1, forward<Args>(args)...);
+                                if (result) return result;
+                        }
+                        if (func(m_Keys[i], level, forward<Args>(args)...))
+                                return &m_Keys[i];
+                }
+                if (m_SubPages[m_KeyCount])
+                        return m_SubPages[m_KeyCount]->Traverse(func, level + 1, forward<Args>(args)...);
+                return nullptr;
+        }
+
         // ForEach variadic template
         template <typename Func, typename... Args>
         void ForEach(Func func, Count level, Args&&... args)
         {
-                for (Count i = 0; i < m_KeyCount; i++)
-                {
-                        if (m_SubPages[i])
-                                m_SubPages[i]->ForEach(func, level + 1, forward<Args>(args)...);
-                        func(m_Keys[i], level, forward<Args>(args)...);
-                }
-                if (m_SubPages[m_KeyCount])
-                        m_SubPages[m_KeyCount]->ForEach(func, level + 1, forward<Args>(args)...);
+                Traverse([&func](Node& node, Count lvl, auto&... a) { func(node, lvl, a...); return false; }, level, forward<Args>(args)...);
         }
 
         // FirstThat variadic template
         template <typename Func, typename... Args>
         Node *FirstThat(Func func, Count level, Args&&... args)
         {
-                for (Count i = 0; i < m_KeyCount; i++)
-                {
-                        if (m_SubPages[i])
-                        {
-                                Node *result = m_SubPages[i]->FirstThat(func, level + 1, forward<Args>(args)...);
-                                if (result)
-                                        return result;
-                        }
-                        if (func(m_Keys[i], level, forward<Args>(args)...))
-                                return &m_Keys[i];
-                }
-                if (m_SubPages[m_KeyCount])
-                        return m_SubPages[m_KeyCount]->FirstThat(func, level + 1, forward<Args>(args)...);
-                return nullptr;
+                return Traverse(func, level, forward<Args>(args)...);
         }
 
 protected:

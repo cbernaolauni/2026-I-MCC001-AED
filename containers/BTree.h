@@ -4,7 +4,11 @@
 #define BTREE_H
 
 #include <iostream>
+#include <mutex>
+#include <utility>
 #include "BTreePage.h"
+#include "BTreeIterator.h"
+#include "../foreach.h"
 
 #define DEFAULT_BTREE_ORDER 3
 
@@ -24,6 +28,11 @@ class BTree
 
 public:
        using Node = typename BTNode::Node;
+       using BTPage  = BTNode;
+       using MySelf  = BTree<Traits>;
+
+       using forward_iterator  = BTreeIterator<MySelf, BTreeTraversalDirection::Forward>;
+       using backward_iterator = BTreeIterator<MySelf, BTreeTraversalDirection::Backward>;
 
        BTree(int order = DEFAULT_BTREE_ORDER, bool unique = true);
        ~BTree();
@@ -33,26 +42,33 @@ public:
        bool Insert(const key_type key, ObjIDType ObjID);
        bool Remove(const key_type key, ObjIDType ObjID);
        ObjIDType Search(const key_type key);
-       Count size() { return m_NumKeys; }
-       Capacity height() { return m_Height; }
-       Order GetOrder() { return m_Order; }
+       Count size() { scoped_lock lock(m_mutex); return m_NumKeys; }
+       Capacity height() { scoped_lock lock(m_mutex); return m_Height; }
+       Order GetOrder() { scoped_lock lock(m_mutex); return m_Order; }
 
        void Print(ostream &os);
 
        template <typename Func, typename... Args>
        void ForEach(Func func, Args &&...args)
        {
-              m_Root.ForEach(func, 0, forward<Args>(args)...);
+              scoped_lock lock(m_mutex);
+              ::ForEach(begin(), end(), func, forward<Args>(args)...);
        }
 
        template <typename Func, typename... Args>
        Node *FirstThat(Func func, Args &&...args)
        {
-              return m_Root.FirstThat([&func](Node& node, Count, auto&&... a) {
-                     return func(node, a...);
-                     }, 0, forward<Args>(args)...);
+              scoped_lock lock(m_mutex);
+              auto it = ::FirstThat(begin(), end(), func, forward<Args>(args)...);
+              return (it != end()) ? &(*it) : nullptr;
        }
        // typedef               Node iterator;
+
+       // Iteradores
+       forward_iterator  begin()  { return forward_iterator(&m_Root);   }
+       forward_iterator  end()    { return forward_iterator(nullptr);    }
+       backward_iterator rbegin() { return backward_iterator(&m_Root);  }
+       backward_iterator rend()   { return backward_iterator(nullptr);  }
 
 protected:
        BTNode m_Root;
@@ -60,9 +76,11 @@ protected:
        Order m_Order;     // order of tree
        Count m_NumKeys;   // number of keys
        bool m_Unique;     // Accept the elements only once ?
+       mutable mutex  m_mutex;
 };
 
-const int MaxHeight = 5;
+const Order MaxHeight = 5;
+
 template <typename Traits>
 BTree<Traits>::BTree(Order order, bool unique)
     : m_Unique(unique),
@@ -80,8 +98,9 @@ BTree<Traits>::~BTree()
 }
 
 template <typename Traits>
-bool BTree<Traits>::Insert(const key_type key, const ObjIDType ObjID)
+bool BTree<Traits>::Insert(const key_type key, ObjIDType ObjID)
 {
+       scoped_lock lock(m_mutex);
        bt_ErrorCode error = m_Root.Insert(key, ObjID);
        if (error == bt_duplicate)
               return false;
@@ -95,8 +114,9 @@ bool BTree<Traits>::Insert(const key_type key, const ObjIDType ObjID)
 }
 
 template <typename Traits>
-bool BTree<Traits>::Remove(const key_type key, const ObjIDType ObjID)
+bool BTree<Traits>::Remove(const key_type key, ObjIDType ObjID)
 {
+       scoped_lock lock(m_mutex);
        bt_ErrorCode error = m_Root.Remove(key, ObjID);
        if (error == bt_duplicate || error == bt_nofound)
               return false;
@@ -111,6 +131,7 @@ template <typename Traits>
 typename BTree<Traits>::ObjIDType
 BTree<Traits>::Search(const key_type key)
 {
+       scoped_lock lock(m_mutex);
        ObjIDType ObjID = -1;
        m_Root.Search(key, ObjID);
        return ObjID;
@@ -119,6 +140,7 @@ BTree<Traits>::Search(const key_type key)
 template <typename Traits>
 void BTree<Traits>::Print(ostream &os)
 {
+       scoped_lock lock(m_mutex);
        m_Root.Print(os);
 }
 
