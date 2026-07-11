@@ -3,5 +3,6 @@
 
 void ListsDemo();
 void BtreeDemo();
+void DemoMap();
 
 #endif // __LISTS_H__

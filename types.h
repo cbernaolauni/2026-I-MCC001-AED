@@ -27,4 +27,10 @@ using Order    = int;
 using Capacity = int;
 using Count    = int;
 
+using Nombre = string;
+using Tipo   = string;
+using Letra = string;
+using Edad = int;
+using Total = int;
+
 #endif // __TYPES_H__

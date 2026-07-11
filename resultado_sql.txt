@@ -1,0 +1,178 @@
+SE EJECUTO LAS SIGUIENTES SENTENCIAS:
+docker cp .\indices_demo.sql pg-demo:/indices_demo.sql
+docker exec -it pg-demo psql -U cesar -d cursodb -f /indices_demo.sql
+
+RESULTADOS:
+Timing is on.
+DROP TABLE
+Time: 2.999 ms
+DROP TABLE
+Time: 4.449 ms
+DROP TABLE
+Time: 6.113 ms
+CREATE TABLE
+Time: 9.779 ms
+INSERT 0 200000
+Time: 613.984 ms
+                                                   QUERY PLAN                                                    
+-----------------------------------------------------------------------------------------------------------------
+ Seq Scan on empleados  (cost=0.00..2984.54 rows=40041 width=72) (actual time=0.009..22.695 rows=119718 loops=1)
+   Filter: (salario > '5000'::numeric)
+   Rows Removed by Filter: 80282
+ Planning Time: 0.071 ms
+ Execution Time: 25.046 ms
+(5 rows)
+
+Time: 25.586 ms
+CREATE INDEX
+Time: 95.630 ms
+                                                                QUERY PLAN                                                                
+------------------------------------------------------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on empleados  (cost=1285.09..3601.43 rows=66667 width=72) (actual time=8.265..16.665 rows=119718 loops=1)
+   Recheck Cond: (salario > '5000'::numeric)
+   Heap Blocks: exact=1483
+   ->  Bitmap Index Scan on idx_empleados_salario  (cost=0.00..1268.42 rows=66667 width=0) (actual time=8.142..8.142 rows=119718 loops=1)
+         Index Cond: (salario > '5000'::numeric)
+ Planning Time: 0.126 ms
+ Execution Time: 19.050 ms
+(7 rows)
+
+Time: 19.497 ms
+                                                              QUERY PLAN                                                              
+--------------------------------------------------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on empleados  (cost=22.67..1435.98 rows=1000 width=72) (actual time=5.213..10.507 rows=60077 loops=1)
+   Recheck Cond: ((salario >= '3000'::numeric) AND (salario <= '6000'::numeric))
+   Heap Blocks: exact=1483
+   ->  Bitmap Index Scan on idx_empleados_salario  (cost=0.00..22.42 rows=1000 width=0) (actual time=5.081..5.081 rows=60077 loops=1)
+         Index Cond: ((salario >= '3000'::numeric) AND (salario <= '6000'::numeric))
+ Planning Time: 0.061 ms
+ Execution Time: 11.712 ms
+(7 rows)
+
+Time: 12.386 ms
+                                                                    QUERY PLAN                                                                    
+--------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.42..1.54 rows=20 width=72) (actual time=0.016..0.030 rows=20 loops=1)
+   ->  Index Scan using idx_empleados_salario on empleados  (cost=0.42..11228.42 rows=200000 width=72) (actual time=0.015..0.028 rows=20 loops=1)
+ Planning Time: 0.062 ms
+ Execution Time: 0.035 ms
+(4 rows)
+
+Time: 0.377 ms
+                                                QUERY PLAN                                                 
+-----------------------------------------------------------------------------------------------------------
+ Seq Scan on empleados  (cost=0.00..3983.00 rows=1000 width=72) (actual time=8.720..11.696 rows=1 loops=1)
+   Filter: (nombre = 'empleado_150000'::text)
+   Rows Removed by Filter: 199999
+ Planning Time: 0.035 ms
+ Execution Time: 11.705 ms
+(5 rows)
+
+Time: 11.979 ms
+CREATE INDEX
+Time: 186.067 ms
+                                                              QUERY PLAN                                                              
+--------------------------------------------------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on empleados  (cost=27.75..1438.56 rows=1000 width=72) (actual time=0.014..0.014 rows=1 loops=1)
+   Recheck Cond: (nombre = 'empleado_150000'::text)
+   Heap Blocks: exact=1
+   ->  Bitmap Index Scan on idx_empleados_nombre_hash  (cost=0.00..27.50 rows=1000 width=0) (actual time=0.009..0.009 rows=1 loops=1)
+         Index Cond: (nombre = 'empleado_150000'::text)
+ Planning Time: 0.085 ms
+ Execution Time: 0.025 ms
+(7 rows)
+
+Time: 0.360 ms
+                                                   QUERY PLAN                                                    
+-----------------------------------------------------------------------------------------------------------------
+ Seq Scan on empleados  (cost=0.00..3983.00 rows=66667 width=72) (actual time=0.015..52.200 rows=199999 loops=1)
+   Filter: (nombre > 'empleado_1'::text)
+   Rows Removed by Filter: 1
+ Planning Time: 0.024 ms
+ Execution Time: 56.283 ms
+(5 rows)
+
+Time: 56.549 ms
+CREATE TABLE
+Time: 8.462 ms
+INSERT 0 100000
+Time: 236.145 ms
+                                                QUERY PLAN                                                
+----------------------------------------------------------------------------------------------------------
+ Seq Scan on reservas  (cost=0.00..1720.12 rows=709 width=68) (actual time=0.480..12.357 rows=75 loops=1)
+   Filter: (periodo && '["2026-03-10 09:00:00","2026-03-10 11:00:00")'::tsrange)
+   Rows Removed by Filter: 99925
+ Planning Time: 0.039 ms
+ Execution Time: 12.368 ms
+(5 rows)
+
+Time: 12.749 ms
+CREATE INDEX
+Time: 951.127 ms
+                                                            QUERY PLAN                                                            
+----------------------------------------------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on reservas  (cost=40.03..929.48 rows=1000 width=68) (actual time=0.051..0.107 rows=75 loops=1)
+   Recheck Cond: (periodo && '["2026-03-10 09:00:00","2026-03-10 11:00:00")'::tsrange)
+   Heap Blocks: exact=71
+   ->  Bitmap Index Scan on idx_reservas_periodo  (cost=0.00..39.78 rows=1000 width=0) (actual time=0.042..0.042 rows=75 loops=1)
+         Index Cond: (periodo && '["2026-03-10 09:00:00","2026-03-10 11:00:00")'::tsrange)
+ Planning Time: 0.095 ms
+ Execution Time: 0.120 ms
+(7 rows)
+
+Time: 0.473 ms
+CREATE TABLE
+Time: 9.561 ms
+CREATE FUNCTION
+Time: 2.619 ms
+CREATE FUNCTION
+Time: 1.662 ms
+ medir_consulta_repetida 
+-------------------------
+  0.06220000000000000000
+(1 row)
+
+Time: 2.720 ms
+ medir_consulta_repetida 
+-------------------------
+     13.3938000000000000
+(1 row)
+
+Time: 69.301 ms
+ medir_consulta_repetida 
+-------------------------
+  0.06160000000000000000
+(1 row)
+
+Time: 2.407 ms
+ medir_consulta_repetida 
+-------------------------
+  0.12780000000000000000
+(1 row)
+
+Time: 2.598 ms
+SET
+Time: 0.114 ms
+SET
+Time: 0.098 ms
+ medir_consulta_repetida 
+-------------------------
+     16.9662000000000000
+(1 row)
+
+Time: 87.092 ms
+RESET
+Time: 0.132 ms
+RESET
+Time: 0.086 ms
+         etiqueta          | mediciones | tiempo_promedio_ms | tiempo_min_ms | tiempo_max_ms 
+---------------------------+------------+--------------------+---------------+---------------
+ btree_igualdad_sin_indice |          5 |             16.966 |        16.733 |        17.261
+ btree_rango               |          5 |             13.394 |        11.690 |        14.178
+ gist_solapamiento         |          5 |              0.128 |         0.093 |         0.202
+ hash_igualdad             |          5 |              0.062 |         0.028 |         0.115
+ btree_igualdad            |          5 |              0.062 |         0.029 |         0.179
+(5 rows)
+
+Time: 0.484 ms
+Timing is off.

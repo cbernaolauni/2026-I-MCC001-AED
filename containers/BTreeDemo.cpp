@@ -1,3 +1,8 @@
+/**
+ * @file BTreeDemo.cpp
+ * @brief Demo de ejercitación de BTree: inserción masiva de caracteres,
+ *        recorrido con iteradores forward/backward, y búsqueda con FirstThat.
+ */
 //#include <iostream.h>
 #include <time.h>
 #include <stdlib.h>
@@ -12,6 +17,11 @@ const char * keys3 = "DYZakHIUwxVJ203ejOP9Qc8AdtuEop1XvTRghSNbW567BfiCqrs4FGMyzK
 
 const Order BTreeSize = 3;
 
+/**
+ * @brief Ejercita BTree<BTreePageTrait<char>>: inserta todas las claves de
+ *        @c keys1, imprime el árbol, recorre con los iteradores forward y
+ *        backward, y ejecuta un FirstThat buscando la clave 'q'.
+ */
 void BtreeDemo()
 {
         using CharTrait = BTreePageTrait<char>;
