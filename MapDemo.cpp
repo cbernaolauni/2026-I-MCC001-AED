@@ -49,8 +49,7 @@ void DemoMapBusqueda()
     if (it == stock.end())
         cout << "\"clavos\" no existe en el stock (find no lo crea)\n";
  
-    // contains() (C++20) es mas legible que comparar con end()
-    if (!stock.contains("clavos"))
+    if (stock.find("clavos") == stock.end())
         cout << "\"clavos\" no existe (via contains())\n";
  
     // ahora si consultamos con operator[], "clavos" queda insertado con valor 0
