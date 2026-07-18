@@ -4,5 +4,7 @@
 void ListsDemo();
 void BtreeDemo();
 void DemoMap();
+void DemoDigitalTrie();
+void DemoStl();
 
 #endif // __LISTS_H__

@@ -49,9 +49,6 @@ void DemoMapBusqueda()
     if (it == stock.end())
         cout << "\"clavos\" no existe en el stock (find no lo crea)\n";
  
-    if (stock.find("clavos") == stock.end())
-        cout << "\"clavos\" no existe (via contains())\n";
- 
     // ahora si consultamos con operator[], "clavos" queda insertado con valor 0
     cout << "stock[\"clavos\"] = " << stock["clavos"] << " (se creo la entrada)\n";
     cout << "tamano tras la consulta: " << stock.size() << "\n";
@@ -99,8 +96,8 @@ void DemoMapVsUnorderedMap()
 {
     cout << "\n=== 5. map vs unordered_map ===\n";
  
-    map<Letra, TI> ordenado{{"z", 1}, {"a", 2}, {"m", 3}};
-    unordered_map<Letra, TI> noOrdenado{{"z", 1}, {"a", 2}, {"m", 3}};
+    map<Letra, TI> ordenado{{"z", 1}, {"a", 2}, {"m", 3}, {"b", 4}};
+    unordered_map<Letra, TI> noOrdenado{{"z", 1}, {"a", 2}, {"m", 3}, {"b", 4}};
  
     cout << "map (orden garantizado por clave):\n";
     for (const auto& [k, v] : ordenado)

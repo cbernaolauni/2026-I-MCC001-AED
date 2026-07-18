@@ -13,5 +13,7 @@ unsigned char size2() { return 0; }
 int main() {
     BtreeDemo();
     DemoMap();
+    DemoDigitalTrie();
+    DemoStl();
     return 0;
 }

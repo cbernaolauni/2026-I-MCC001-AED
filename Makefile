@@ -6,6 +6,8 @@ TARGET = main
 SRCS = main.cpp \
 	   containers/BTreeDemo.cpp \
 	   MapDemo.cpp \
+	   DigitalTrieDemo.cpp \
+	   StlDemo.cpp \
 # 	   DemoVector.cpp
 # macros.cpp vector.cpp
 
