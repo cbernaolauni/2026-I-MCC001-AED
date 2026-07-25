@@ -11,8 +11,8 @@ using namespace std;
 size_t size1() { return 0; }
 unsigned char size2() { return 0; }
 int main() {
-    BtreeDemo();
-    DemoMap();
+    //BtreeDemo();
+    //DemoMap();
     DemoDigitalTrie();
     DemoStl();
     return 0;
